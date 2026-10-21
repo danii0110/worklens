@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+
+const POLL_INTERVAL_MS = 5 * 60 * 1000
 
 function App() {
   const [siteUrl, setSiteUrl] = useState(import.meta.env.VITE_JIRA_SITE_URL ?? '')
@@ -8,19 +10,21 @@ function App() {
   const [issues, setIssues] = useState<Awaited<ReturnType<typeof window.api.fetchMyIssues>>>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  async function handleFetch(): Promise<void> {
+  const handleFetch = useCallback(async (): Promise<void> => {
     setLoading(true)
     setError(null)
     try {
       const result = await window.api.fetchMyIssues()
       setIssues(result)
+      setLastUpdated(new Date())
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     window.api.getConfig().then((config) => {
@@ -31,7 +35,13 @@ function App() {
       setConfigured(isConfigured)
       if (isConfigured) handleFetch()
     })
-  }, [])
+  }, [handleFetch])
+
+  useEffect(() => {
+    if (!configured) return
+    const interval = setInterval(handleFetch, POLL_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [configured, handleFetch])
 
   async function handleSaveConfig(): Promise<void> {
     await window.api.saveConfig({ siteUrl, email, apiToken })
@@ -69,9 +79,16 @@ function App() {
       <section>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: 16 }}>내 담당 티켓</h2>
-          <button onClick={handleFetch} disabled={!configured || loading}>
-            {loading ? '불러오는 중...' : '새로고침'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {lastUpdated && (
+              <span style={{ fontSize: 12, color: '#888' }}>
+                마지막 업데이트 {lastUpdated.toLocaleTimeString('ko-KR')}
+              </span>
+            )}
+            <button onClick={handleFetch} disabled={!configured || loading}>
+              {loading ? '불러오는 중...' : '새로고침'}
+            </button>
+          </div>
         </div>
 
         {error && <p style={{ color: 'crimson' }}>{error}</p>}
