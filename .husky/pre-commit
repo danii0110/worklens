@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if git diff --cached --name-only | grep -qE '(^|/)\.env$'; then
+  echo "🚫 커밋 중단: .env 파일은 절대 커밋하면 안 됩니다."
+  exit 1
+fi
+
+PATTERN='juvis\.co\.kr|atlassian\.net|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}'
+
+if git diff --cached -U0 | grep -E '^\+' | grep -vE '^\+\+\+' | grep -qiE "$PATTERN"; then
+  echo "🚫 커밋 중단: 회사 도메인/사내 URL/API 키로 보이는 값이 변경 내용에 포함돼 있습니다."
+  echo "   public 레포에 개인정보·사내 정보가 올라가지 않도록 하드코딩 대신 .env(gitignore)로 분리하세요."
+  exit 1
+fi
