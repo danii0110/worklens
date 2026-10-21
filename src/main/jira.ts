@@ -1,33 +1,18 @@
-import type { JiraConfig } from './store'
+import type { JiraConfig, JiraIssue, RecentComment } from '../shared/types'
 
-export interface JiraIssue {
-  key: string
-  summary: string
-  status: string
-  dueDate: string | null
-  url: string
-}
+export type { JiraIssue, RecentComment }
 
 interface JiraApiIssue {
   key: string
   fields: {
     summary: string
-    status?: { name: string }
+    status?: { name: string; statusCategory?: { key: string } }
     duedate?: string | null
   }
 }
 
 interface JiraSearchResponse {
   issues: JiraApiIssue[]
-}
-
-export interface RecentComment {
-  issueKey: string
-  issueSummary: string
-  author: string
-  body: string
-  created: string
-  url: string
 }
 
 interface AdfNode {
@@ -82,6 +67,7 @@ export async function fetchMyIssues(config: JiraConfig): Promise<JiraIssue[]> {
     key: issue.key,
     summary: issue.fields.summary,
     status: issue.fields.status?.name ?? '',
+    statusCategory: issue.fields.status?.statusCategory?.key ?? '',
     dueDate: issue.fields.duedate ?? null,
     url: `${baseUrl}/browse/${issue.key}`
   }))

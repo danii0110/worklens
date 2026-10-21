@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, nativeImage } from 'electron'
 import { join } from 'path'
 import { loadConfig, saveConfig, type JiraConfig } from './store'
-import { fetchMyIssues, fetchRecentComments } from './jira'
+import { fetchMyIssues, fetchRecentComments, type JiraIssue } from './jira'
 import { listClaudeSessions } from './claudeSessions'
 import { registerTerminalHandlers } from './terminal'
 
@@ -60,10 +60,8 @@ app.whenReady().then(() => {
     return fetchMyIssues(requireConfig())
   })
 
-  ipcMain.handle('jira:fetchRecentComments', async () => {
-    const config = requireConfig()
-    const issues = await fetchMyIssues(config)
-    return fetchRecentComments(config, issues)
+  ipcMain.handle('jira:fetchRecentComments', async (_event, issues: JiraIssue[]) => {
+    return fetchRecentComments(requireConfig(), issues)
   })
 
   ipcMain.handle('claude:listSessions', () => listClaudeSessions())

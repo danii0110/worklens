@@ -1,34 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { JiraConfig, JiraIssue, RecentComment, ClaudeSession } from '../shared/types'
 
-export interface JiraConfig {
-  siteUrl: string
-  email: string
-  apiToken: string
-}
-
-export interface JiraIssue {
-  key: string
-  summary: string
-  status: string
-  dueDate: string | null
-  url: string
-}
-
-export interface RecentComment {
-  issueKey: string
-  issueSummary: string
-  author: string
-  body: string
-  created: string
-  url: string
-}
-
-export interface ClaudeSession {
-  sessionId: string
-  projectPath: string
-  lastActive: string
-  preview: string
-}
+export type { JiraConfig, JiraIssue, RecentComment, ClaudeSession }
 
 function subscribe<Args extends unknown[]>(
   channel: string,
@@ -46,8 +19,8 @@ const api = {
   getConfig: (): Promise<Partial<JiraConfig>> => ipcRenderer.invoke('config:get'),
   saveConfig: (config: JiraConfig): Promise<void> => ipcRenderer.invoke('config:save', config),
   fetchMyIssues: (): Promise<JiraIssue[]> => ipcRenderer.invoke('jira:fetchMyIssues'),
-  fetchRecentComments: (): Promise<RecentComment[]> =>
-    ipcRenderer.invoke('jira:fetchRecentComments'),
+  fetchRecentComments: (issues: JiraIssue[]): Promise<RecentComment[]> =>
+    ipcRenderer.invoke('jira:fetchRecentComments', issues),
   listClaudeSessions: (): Promise<ClaudeSession[]> => ipcRenderer.invoke('claude:listSessions'),
   terminal: {
     create: (sessionId: string): Promise<string> =>

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import TerminalPanel from './TerminalPanel'
+import { usePolling } from './usePolling'
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000
 
@@ -7,10 +8,21 @@ type JiraIssue = Awaited<ReturnType<typeof window.api.fetchMyIssues>>[number]
 type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[number]
 type ClaudeSession = Awaited<ReturnType<typeof window.api.listClaudeSessions>>[number]
 
+// Explicit order for known statuses; anything else falls back to its Jira
+// status category (in-progress-like, then new, then done) instead of an
+// arbitrary position.
 const STATUS_ORDER = ['진행 중', '개발완료', '미해결']
+const CATEGORY_RANK: Record<string, number> = { indeterminate: 0, new: 1, done: 2 }
 
 function projectBasename(projectPath: string): string {
   return projectPath.split('/').pop() ?? projectPath
+}
+
+function statusRank(status: string, items: JiraIssue[]): number {
+  const explicitRank = STATUS_ORDER.indexOf(status)
+  if (explicitRank !== -1) return explicitRank
+  const category = items[0]?.statusCategory ?? ''
+  return STATUS_ORDER.length + (CATEGORY_RANK[category] ?? Object.keys(CATEGORY_RANK).length)
 }
 
 function groupByStatus(issues: JiraIssue[]): Array<[string, JiraIssue[]]> {
@@ -20,14 +32,9 @@ function groupByStatus(issues: JiraIssue[]): Array<[string, JiraIssue[]]> {
     group.push(issue)
     groups.set(issue.status, group)
   }
-  return Array.from(groups.entries()).sort(([a], [b]) => {
-    const rankA = STATUS_ORDER.indexOf(a)
-    const rankB = STATUS_ORDER.indexOf(b)
-    if (rankA === -1 && rankB === -1) return 0
-    if (rankA === -1) return 1
-    if (rankB === -1) return -1
-    return rankA - rankB
-  })
+  return Array.from(groups.entries()).sort(
+    ([a, itemsA], [b, itemsB]) => statusRank(a, itemsA) - statusRank(b, itemsB)
+  )
 }
 
 function getDueDateClass(dueDate: string | null): 'overdue' | 'soon' | 'normal' {
@@ -65,10 +72,8 @@ function App() {
     setLoading(true)
     setError(null)
     try {
-      const [issueResult, commentResult] = await Promise.all([
-        window.api.fetchMyIssues(),
-        window.api.fetchRecentComments()
-      ])
+      const issueResult = await window.api.fetchMyIssues()
+      const commentResult = await window.api.fetchRecentComments(issueResult)
       setIssues(issueResult)
       setComments(commentResult)
       setLastUpdated(new Date())
@@ -87,25 +92,16 @@ function App() {
       const isConfigured = Boolean(config.siteUrl && config.email && config.apiToken)
       setConfigured(isConfigured)
       setShowSettings(!isConfigured)
-      if (isConfigured) handleFetch()
     })
-  }, [handleFetch])
+  }, [])
 
-  useEffect(() => {
-    if (!configured) return
-    const interval = setInterval(handleFetch, POLL_INTERVAL_MS)
-    return () => clearInterval(interval)
-  }, [configured, handleFetch])
+  usePolling(handleFetch, POLL_INTERVAL_MS, configured)
 
   const handleFetchSessions = useCallback(async (): Promise<void> => {
     setClaudeSessions(await window.api.listClaudeSessions())
   }, [])
 
-  useEffect(() => {
-    Promise.resolve().then(handleFetchSessions)
-    const interval = setInterval(handleFetchSessions, POLL_INTERVAL_MS)
-    return () => clearInterval(interval)
-  }, [handleFetchSessions])
+  usePolling(handleFetchSessions, POLL_INTERVAL_MS)
 
   async function handleSaveConfig(): Promise<void> {
     await window.api.saveConfig({ siteUrl, email, apiToken })
@@ -118,7 +114,11 @@ function App() {
     window.open(url, '_blank')
   }
 
-  const commentsByIssueKey = new Map(comments.map((comment) => [comment.issueKey, comment]))
+  const commentsByIssueKey = useMemo(
+    () => new Map(comments.map((comment) => [comment.issueKey, comment])),
+    [comments]
+  )
+  const groupedIssues = useMemo(() => groupByStatus(issues), [issues])
 
   return (
     <div className="app">
@@ -221,7 +221,7 @@ function App() {
               <div className="empty-state">표시할 티켓이 없습니다.</div>
             )}
 
-            {groupByStatus(issues).map(([status, items]) => (
+            {groupedIssues.map(([status, items]) => (
               <div key={status} className="status-group">
                 <span className="status-badge">
                   {status} {items.length}

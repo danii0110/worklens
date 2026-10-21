@@ -1,12 +1,9 @@
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
+import type { JiraConfig } from '../shared/types'
 
-export interface JiraConfig {
-  siteUrl: string
-  email: string
-  apiToken: string
-}
+export type { JiraConfig }
 
 function getConfigPath(): string {
   const dir = app.getPath('userData')

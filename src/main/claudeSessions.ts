@@ -1,21 +1,28 @@
-import { createReadStream, readdirSync, statSync } from 'fs'
+import { createReadStream } from 'fs'
+import { readdir, stat } from 'fs/promises'
 import { createInterface } from 'readline'
 import { homedir } from 'os'
 import { join } from 'path'
+import type { ClaudeSession } from '../shared/types'
 
-export interface ClaudeSession {
-  sessionId: string
-  projectPath: string
-  lastActive: string
-  preview: string
-}
+export type { ClaudeSession }
+
+const CLAUDE_PROJECTS_ROOT = join(homedir(), '.claude', 'projects')
 
 interface SessionFile {
   sessionId: string
   fallbackProjectPath: string
   lastActive: string
+  mtimeMs: number
   filePath: string
 }
+
+interface SessionMeta {
+  preview: string
+  cwd: string | null
+}
+
+const metaCache = new Map<string, { mtimeMs: number; meta: SessionMeta }>()
 
 function decodeProjectDir(dirName: string): string {
   return dirName.replace(/^-/, '/').replace(/-/g, '/')
@@ -37,10 +44,10 @@ function extractContentText(content: unknown): string | null {
   return null
 }
 
-function collectSessionFiles(root: string): SessionFile[] {
+async function collectSessionFiles(root: string): Promise<SessionFile[]> {
   let projectDirs: string[]
   try {
-    projectDirs = readdirSync(root, { withFileTypes: true })
+    projectDirs = (await readdir(root, { withFileTypes: true }))
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
   } catch {
@@ -52,17 +59,18 @@ function collectSessionFiles(root: string): SessionFile[] {
     const dirPath = join(root, dir)
     let files: string[]
     try {
-      files = readdirSync(dirPath).filter((name) => name.endsWith('.jsonl'))
+      files = (await readdir(dirPath)).filter((name) => name.endsWith('.jsonl'))
     } catch {
       continue
     }
     for (const file of files) {
       const filePath = join(dirPath, file)
-      const stats = statSync(filePath)
+      const stats = await stat(filePath)
       sessions.push({
         sessionId: file.replace(/\.jsonl$/, ''),
         fallbackProjectPath: decodeProjectDir(dir),
         lastActive: stats.mtime.toISOString(),
+        mtimeMs: stats.mtimeMs,
         filePath
       })
     }
@@ -70,7 +78,7 @@ function collectSessionFiles(root: string): SessionFile[] {
   return sessions
 }
 
-async function readSessionMeta(filePath: string): Promise<{ preview: string; cwd: string | null }> {
+async function readSessionMeta(filePath: string): Promise<SessionMeta> {
   const rl = createInterface({ input: createReadStream(filePath, { encoding: 'utf-8' }) })
   let cwd: string | null = null
   try {
@@ -97,26 +105,36 @@ async function readSessionMeta(filePath: string): Promise<{ preview: string; cwd
   }
 }
 
+// Session files are append-only, so content for a given mtime never changes —
+// safe to cache keyed by (filePath, mtimeMs) and skip re-parsing unchanged files.
+async function getCachedSessionMeta(filePath: string, mtimeMs: number): Promise<SessionMeta> {
+  const cached = metaCache.get(filePath)
+  if (cached && cached.mtimeMs === mtimeMs) return cached.meta
+
+  const meta = await readSessionMeta(filePath)
+  metaCache.set(filePath, { mtimeMs, meta })
+  return meta
+}
+
 export async function resolveSessionCwd(sessionId: string): Promise<string | null> {
   if (!/^[a-f0-9-]{36}$/i.test(sessionId)) return null
 
-  const root = join(homedir(), '.claude', 'projects')
-  const match = collectSessionFiles(root).find((session) => session.sessionId === sessionId)
+  const sessions = await collectSessionFiles(CLAUDE_PROJECTS_ROOT)
+  const match = sessions.find((session) => session.sessionId === sessionId)
   if (!match) return null
 
-  const { cwd } = await readSessionMeta(match.filePath)
+  const { cwd } = await getCachedSessionMeta(match.filePath, match.mtimeMs)
   return cwd ?? match.fallbackProjectPath
 }
 
 export async function listClaudeSessions(limit = 30): Promise<ClaudeSession[]> {
-  const root = join(homedir(), '.claude', 'projects')
-  const sessions = collectSessionFiles(root)
+  const sessions = await collectSessionFiles(CLAUDE_PROJECTS_ROOT)
   sessions.sort((a, b) => new Date(b.lastActive).getTime() - new Date(a.lastActive).getTime())
   const top = sessions.slice(0, limit)
 
   return Promise.all(
     top.map(async (session) => {
-      const { preview, cwd } = await readSessionMeta(session.filePath)
+      const { preview, cwd } = await getCachedSessionMeta(session.filePath, session.mtimeMs)
       return {
         sessionId: session.sessionId,
         projectPath: cwd ?? session.fallbackProjectPath,
