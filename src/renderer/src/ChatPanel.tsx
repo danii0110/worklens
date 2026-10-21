@@ -14,12 +14,10 @@ interface PendingPermission {
 }
 
 interface ChatPanelProps {
-  title: string
   sessionId: string
-  onClose: () => void
 }
 
-function ChatPanel({ title, sessionId, onClose }: ChatPanelProps) {
+function ChatPanel({ sessionId }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [pendingPermission, setPendingPermission] = useState<PendingPermission | null>(null)
@@ -87,13 +85,6 @@ function ChatPanel({ title, sessionId, onClose }: ChatPanelProps) {
 
   return (
     <div className="chat-panel">
-      <div className="terminal-header">
-        <span>{title}</span>
-        <button className="terminal-close-btn" onClick={onClose}>
-          ✕
-        </button>
-      </div>
-
       <div ref={scrollRef} className="chat-messages">
         {messages.map((message) => (
           <div key={message.id} className={`chat-bubble chat-bubble-${message.role}`}>

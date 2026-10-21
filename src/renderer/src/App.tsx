@@ -71,7 +71,8 @@ function App() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [claudeSessions, setClaudeSessions] = useState<ClaudeSession[]>([])
-  const [activeSession, setActiveSession] = useState<ClaudeSession | null>(null)
+  const [openSessions, setOpenSessions] = useState<ClaudeSession[]>([])
+  const [activeTabId, setActiveTabId] = useState<string | null>(null)
 
   const handleFetch = useCallback(async (): Promise<void> => {
     setLoading(true)
@@ -120,16 +121,28 @@ function App() {
   }
 
   function handleOpenSession(session: ClaudeSession): void {
-    if (
-      isRecentlyActive(session.lastActive) &&
-      !window.confirm(
-        '이 세션은 방금까지 활동이 있었어요. 다른 창에서 지금 진행 중인 세션일 수 있습니다.\n' +
-          '같은 세션을 동시에 두 군데서 열면 대화 기록이 꼬일 수 있어요. 그래도 이어서 대화하시겠어요?'
-      )
-    ) {
-      return
+    const alreadyOpen = openSessions.some((s) => s.sessionId === session.sessionId)
+    if (!alreadyOpen) {
+      if (
+        isRecentlyActive(session.lastActive) &&
+        !window.confirm(
+          '이 세션은 방금까지 활동이 있었어요. 다른 창에서 지금 진행 중인 세션일 수 있습니다.\n' +
+            '같은 세션을 동시에 두 군데서 열면 대화 기록이 꼬일 수 있어요. 그래도 이어서 대화하시겠어요?'
+        )
+      ) {
+        return
+      }
+      setOpenSessions((prev) => [...prev, session])
     }
-    setActiveSession(session)
+    setActiveTabId(session.sessionId)
+  }
+
+  function handleCloseTab(sessionId: string): void {
+    const next = openSessions.filter((s) => s.sessionId !== sessionId)
+    setOpenSessions(next)
+    if (activeTabId === sessionId) {
+      setActiveTabId(next.length > 0 ? next[next.length - 1].sessionId : null)
+    }
   }
 
   const commentsByIssueKey = useMemo(
@@ -284,13 +297,38 @@ function App() {
           </section>
         </main>
 
-        {activeSession && (
+        {openSessions.length > 0 && (
           <aside className="chat-dock">
-            <ChatPanel
-              title={projectBasename(activeSession.projectPath)}
-              sessionId={activeSession.sessionId}
-              onClose={() => setActiveSession(null)}
-            />
+            <div className="chat-tabs">
+              {openSessions.map((session) => (
+                <div
+                  key={session.sessionId}
+                  className={`chat-tab ${session.sessionId === activeTabId ? 'chat-tab-active' : ''}`}
+                  onClick={() => setActiveTabId(session.sessionId)}
+                >
+                  <span className="chat-tab-title">{projectBasename(session.projectPath)}</span>
+                  <button
+                    className="chat-tab-close"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleCloseTab(session.sessionId)
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {openSessions.map((session) => (
+              <div
+                key={session.sessionId}
+                className="chat-tab-panel"
+                style={{ display: session.sessionId === activeTabId ? 'flex' : 'none' }}
+              >
+                <ChatPanel sessionId={session.sessionId} />
+              </div>
+            ))}
           </aside>
         )}
       </div>
