@@ -114,14 +114,8 @@ async function fetchLatestComment(
 
 export async function fetchRecentComments(
   config: JiraConfig,
-  issues: JiraIssue[],
-  limit = 8
+  issues: JiraIssue[]
 ): Promise<RecentComment[]> {
-  const targets = issues.slice(0, 30)
-  const results = await Promise.all(targets.map((issue) => fetchLatestComment(config, issue)))
-
-  return results
-    .filter((comment): comment is RecentComment => comment !== null)
-    .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
-    .slice(0, limit)
+  const results = await Promise.all(issues.map((issue) => fetchLatestComment(config, issue)))
+  return results.filter((comment): comment is RecentComment => comment !== null)
 }

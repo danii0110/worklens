@@ -91,6 +91,8 @@ function App() {
     window.open(url, '_blank')
   }
 
+  const commentsByIssueKey = new Map(comments.map((comment) => [comment.issueKey, comment]))
+
   return (
     <div className="app">
       <div className="header">
@@ -161,64 +163,42 @@ function App() {
               {status} {items.length}
             </span>
             <ul className="issue-list">
-              {items.map((issue) => (
-                <li key={issue.key} className="issue-item">
-                  <div>
-                    <a
-                      className="issue-key"
-                      href={issue.url}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        openExternal(issue.url)
-                      }}
-                    >
-                      {issue.key}
-                    </a>{' '}
-                    <span className="issue-summary">{issue.summary}</span>
-                  </div>
-                  {issue.dueDate && (
-                    <span className={`due-date ${getDueDateClass(issue.dueDate)}`}>
-                      {issue.dueDate}
-                    </span>
-                  )}
-                </li>
-              ))}
+              {items.map((issue) => {
+                const comment = commentsByIssueKey.get(issue.key)
+                return (
+                  <li key={issue.key} className="issue-item">
+                    <div className="issue-row">
+                      <div>
+                        <a
+                          className="issue-key"
+                          href={issue.url}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            openExternal(issue.url)
+                          }}
+                        >
+                          {issue.key}
+                        </a>{' '}
+                        <span className="issue-summary">{issue.summary}</span>
+                      </div>
+                      {issue.dueDate && (
+                        <span className={`due-date ${getDueDateClass(issue.dueDate)}`}>
+                          {issue.dueDate}
+                        </span>
+                      )}
+                    </div>
+                    {comment && (
+                      <div className="issue-comment">
+                        💬 <strong>{comment.author}</strong> {comment.body}
+                        <span className="meta"> · {formatRelativeTime(comment.created)}</span>
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           </div>
         ))}
-      </section>
-
-      <section className="card">
-        <div className="section-header">
-          <h2>최근 댓글</h2>
-        </div>
-
-        {!loading && !error && configured && comments.length === 0 && (
-          <div className="empty-state">최근 댓글이 없습니다.</div>
-        )}
-
-        <ul className="issue-list">
-          {comments.map((comment) => (
-            <li key={`${comment.issueKey}-${comment.created}`} className="issue-item">
-              <div>
-                <a
-                  className="issue-key"
-                  href={comment.url}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    openExternal(comment.url)
-                  }}
-                >
-                  {comment.issueKey}
-                </a>{' '}
-                <span className="issue-summary">
-                  <strong>{comment.author}</strong> {comment.body}
-                </span>
-              </div>
-              <span className="due-date normal">{formatRelativeTime(comment.created)}</span>
-            </li>
-          ))}
-        </ul>
       </section>
     </div>
   )
