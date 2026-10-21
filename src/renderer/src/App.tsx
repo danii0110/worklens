@@ -5,6 +5,8 @@ const POLL_INTERVAL_MS = 5 * 60 * 1000
 type JiraIssue = Awaited<ReturnType<typeof window.api.fetchMyIssues>>[number]
 type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[number]
 
+const STATUS_ORDER = ['진행 중', '개발완료', '미해결']
+
 function groupByStatus(issues: JiraIssue[]): Array<[string, JiraIssue[]]> {
   const groups = new Map<string, JiraIssue[]>()
   for (const issue of issues) {
@@ -12,7 +14,14 @@ function groupByStatus(issues: JiraIssue[]): Array<[string, JiraIssue[]]> {
     group.push(issue)
     groups.set(issue.status, group)
   }
-  return Array.from(groups.entries())
+  return Array.from(groups.entries()).sort(([a], [b]) => {
+    const rankA = STATUS_ORDER.indexOf(a)
+    const rankB = STATUS_ORDER.indexOf(b)
+    if (rankA === -1 && rankB === -1) return 0
+    if (rankA === -1) return 1
+    if (rankB === -1) return -1
+    return rankA - rankB
+  })
 }
 
 function getDueDateClass(dueDate: string | null): 'overdue' | 'soon' | 'normal' {
