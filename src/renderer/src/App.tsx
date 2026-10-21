@@ -3,6 +3,7 @@ import ChatPanel from './ChatPanel'
 import { usePolling } from './usePolling'
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000
+const RECENTLY_ACTIVE_THRESHOLD_MS = 2 * 60 * 1000
 
 type JiraIssue = Awaited<ReturnType<typeof window.api.fetchMyIssues>>[number]
 type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[number]
@@ -43,6 +44,10 @@ function getDueDateClass(dueDate: string | null): 'overdue' | 'soon' | 'normal' 
   if (diffDays < 0) return 'overdue'
   if (diffDays <= 3) return 'soon'
   return 'normal'
+}
+
+function isRecentlyActive(lastActive: string): boolean {
+  return Date.now() - new Date(lastActive).getTime() < RECENTLY_ACTIVE_THRESHOLD_MS
 }
 
 function formatRelativeTime(iso: string): string {
@@ -114,6 +119,19 @@ function App() {
     window.open(url, '_blank')
   }
 
+  function handleOpenSession(session: ClaudeSession): void {
+    if (
+      isRecentlyActive(session.lastActive) &&
+      !window.confirm(
+        '이 세션은 방금까지 활동이 있었어요. 다른 창에서 지금 진행 중인 세션일 수 있습니다.\n' +
+          '같은 세션을 동시에 두 군데서 열면 대화 기록이 꼬일 수 있어요. 그래도 이어서 대화하시겠어요?'
+      )
+    ) {
+      return
+    }
+    setActiveSession(session)
+  }
+
   const commentsByIssueKey = useMemo(
     () => new Map(comments.map((comment) => [comment.issueKey, comment])),
     [comments]
@@ -153,7 +171,7 @@ function App() {
                     <span className="meta">{formatRelativeTime(session.lastActive)}</span>
                     <button
                       className="btn-ghost"
-                      onClick={() => setActiveSession(session)}
+                      onClick={() => handleOpenSession(session)}
                       title="이 세션 이어서 대화하기"
                     >
                       이어하기
