@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 
 function App() {
-  const [siteUrl, setSiteUrl] = useState('')
-  const [email, setEmail] = useState('')
+  const [siteUrl, setSiteUrl] = useState(import.meta.env.VITE_JIRA_SITE_URL ?? '')
+  const [email, setEmail] = useState(import.meta.env.VITE_JIRA_EMAIL ?? '')
   const [apiToken, setApiToken] = useState('')
   const [configured, setConfigured] = useState(false)
   const [issues, setIssues] = useState<Awaited<ReturnType<typeof window.api.fetchMyIssues>>>([])
