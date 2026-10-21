@@ -64,7 +64,7 @@ function extractPlainText(node: AdfNode | undefined): string {
 export async function fetchMyIssues(config: JiraConfig): Promise<JiraIssue[]> {
   const { baseUrl, headers } = getAuthContext(config)
   const jql = encodeURIComponent(
-    'assignee = currentUser() AND resolution = Unresolved ORDER BY duedate ASC'
+    'assignee = currentUser() AND statusCategory != Done ORDER BY duedate ASC'
   )
 
   const res = await fetch(

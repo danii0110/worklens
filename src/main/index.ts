@@ -1,7 +1,9 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, nativeImage } from 'electron'
 import { join } from 'path'
 import { loadConfig, saveConfig, type JiraConfig } from './store'
 import { fetchMyIssues, fetchRecentComments } from './jira'
+
+const iconPath = join(__dirname, '../../resources/icon.png')
 
 function requireConfig(): JiraConfig {
   const config = loadConfig()
@@ -16,6 +18,7 @@ function createWindow(): void {
     width: 1100,
     height: 750,
     show: false,
+    icon: iconPath,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -39,6 +42,10 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === 'darwin') {
+    app.dock?.setIcon(nativeImage.createFromPath(iconPath))
+  }
+
   ipcMain.handle('config:get', () => loadConfig())
 
   ipcMain.handle('config:save', (_event, config: JiraConfig) => {
