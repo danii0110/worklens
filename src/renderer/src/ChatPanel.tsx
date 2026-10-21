@@ -86,62 +86,56 @@ function ChatPanel({ title, sessionId, onClose }: ChatPanelProps) {
   }
 
   return (
-    <div className="terminal-overlay">
-      <div className="chat-panel">
-        <div className="terminal-header">
-          <span>{title}</span>
-          <button className="terminal-close-btn" onClick={onClose}>
-            ✕
-          </button>
-        </div>
+    <div className="chat-panel">
+      <div className="terminal-header">
+        <span>{title}</span>
+        <button className="terminal-close-btn" onClick={onClose}>
+          ✕
+        </button>
+      </div>
 
-        <div ref={scrollRef} className="chat-messages">
-          {messages.map((message) => (
-            <div key={message.id} className={`chat-bubble chat-bubble-${message.role}`}>
-              {message.text}
-            </div>
-          ))}
-          {busy && !pendingPermission && (
-            <div className="chat-bubble chat-bubble-system">생각 중...</div>
-          )}
-        </div>
-
-        {pendingPermission && (
-          <div className="chat-permission">
-            <div>
-              <strong>{pendingPermission.toolName}</strong> 실행 승인이 필요해요.
-              <div className="meta">{JSON.stringify(pendingPermission.input)}</div>
-            </div>
-            <div className="chat-permission-actions">
-              <button className="btn-primary" onClick={() => respondPermission(true)}>
-                승인
-              </button>
-              <button className="btn-ghost" onClick={() => respondPermission(false)}>
-                거부
-              </button>
-            </div>
+      <div ref={scrollRef} className="chat-messages">
+        {messages.map((message) => (
+          <div key={message.id} className={`chat-bubble chat-bubble-${message.role}`}>
+            {message.text}
           </div>
+        ))}
+        {busy && !pendingPermission && (
+          <div className="chat-bubble chat-bubble-system">생각 중...</div>
         )}
+      </div>
 
-        <div className="chat-input-row">
-          <input
-            className="field"
-            placeholder="메시지를 입력하세요"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSend()
-            }}
-            disabled={Boolean(pendingPermission)}
-          />
-          <button
-            className="btn-primary"
-            onClick={handleSend}
-            disabled={Boolean(pendingPermission)}
-          >
-            전송
-          </button>
+      {pendingPermission && (
+        <div className="chat-permission">
+          <div>
+            <strong>{pendingPermission.toolName}</strong> 실행 승인이 필요해요.
+            <div className="meta">{JSON.stringify(pendingPermission.input)}</div>
+          </div>
+          <div className="chat-permission-actions">
+            <button className="btn-primary" onClick={() => respondPermission(true)}>
+              승인
+            </button>
+            <button className="btn-ghost" onClick={() => respondPermission(false)}>
+              거부
+            </button>
+          </div>
         </div>
+      )}
+
+      <div className="chat-input-row">
+        <input
+          className="field"
+          placeholder="메시지를 입력하세요"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSend()
+          }}
+          disabled={Boolean(pendingPermission)}
+        />
+        <button className="btn-primary" onClick={handleSend} disabled={Boolean(pendingPermission)}>
+          전송
+        </button>
       </div>
     </div>
   )

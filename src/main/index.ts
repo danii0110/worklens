@@ -17,7 +17,7 @@ function requireConfig(): JiraConfig {
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
-    width: 1200,
+    width: 1440,
     height: 750,
     show: false,
     icon: iconPath,

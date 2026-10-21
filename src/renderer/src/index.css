@@ -37,14 +37,13 @@ body {
 }
 
 .app {
-  max-width: 1040px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 32px 24px 48px;
 }
 
 .layout {
   display: flex;
-  align-items: flex-start;
   gap: 20px;
 }
 
@@ -56,6 +55,12 @@ body {
 .main {
   flex: 1;
   min-width: 0;
+}
+
+.chat-dock {
+  width: 400px;
+  flex-shrink: 0;
+  display: flex;
 }
 
 .header {
@@ -310,27 +315,6 @@ body {
   margin-bottom: 12px;
 }
 
-.terminal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
-}
-
-.terminal-panel {
-  width: 90%;
-  height: 82%;
-  background: #1e2129;
-  border-radius: 10px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
 .terminal-header {
   display: flex;
   justify-content: space-between;
@@ -356,23 +340,15 @@ body {
   color: #e5e7eb;
 }
 
-.terminal-body {
-  flex: 1;
-  padding: 8px;
-  overflow: hidden;
-}
-
 .chat-panel {
-  width: 90%;
-  max-width: 640px;
-  height: 82%;
+  width: 100%;
   background: var(--surface);
   color: var(--text);
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 .chat-panel .terminal-header {
   background: var(--bg);

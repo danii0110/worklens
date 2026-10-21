@@ -265,15 +265,17 @@ function App() {
             ))}
           </section>
         </main>
-      </div>
 
-      {activeSession && (
-        <ChatPanel
-          title={projectBasename(activeSession.projectPath)}
-          sessionId={activeSession.sessionId}
-          onClose={() => setActiveSession(null)}
-        />
-      )}
+        {activeSession && (
+          <aside className="chat-dock">
+            <ChatPanel
+              title={projectBasename(activeSession.projectPath)}
+              sessionId={activeSession.sessionId}
+              onClose={() => setActiveSession(null)}
+            />
+          </aside>
+        )}
+      </div>
     </div>
   )
 }
