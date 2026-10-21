@@ -29,7 +29,7 @@ export async function fetchMyIssues(config: JiraConfig): Promise<JiraIssue[]> {
   )
 
   const res = await fetch(
-    `${baseUrl}/rest/api/3/search?jql=${jql}&fields=summary,status,duedate&maxResults=50`,
+    `${baseUrl}/rest/api/3/search/jql?jql=${jql}&fields=summary,status,duedate&maxResults=50`,
     {
       headers: {
         Authorization: `Basic ${auth}`,
