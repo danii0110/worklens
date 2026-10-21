@@ -36,13 +36,25 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 .app {
   max-width: 1400px;
+  height: 100vh;
   margin: 0 auto;
   padding: 32px 24px 48px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .layout {
+  flex: 1;
+  min-height: 0;
   display: flex;
   gap: 20px;
 }
@@ -50,49 +62,53 @@ body {
 .sidebar {
   width: 280px;
   flex-shrink: 0;
+  overflow-y: auto;
 }
 
 .main {
   flex: 1;
   min-width: 0;
-}
-
-.chat-dock {
-  width: 400px;
-  flex-shrink: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.chat-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 8px;
-  overflow-x: auto;
+.main-view {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
-.chat-tab {
+.main-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.main-tab {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 8px 8px 0 0;
   background: var(--bg);
   border: 1px solid var(--border);
   border-bottom: none;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
   color: var(--text-muted);
 }
-.chat-tab-active {
+.main-tab-active {
   background: var(--surface);
   color: var(--text);
   font-weight: 600;
 }
 
 .chat-tab-title {
-  max-width: 120px;
+  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
