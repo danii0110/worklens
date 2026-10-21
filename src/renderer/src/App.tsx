@@ -14,6 +14,14 @@ function groupByStatus(issues: JiraIssue[]): Array<[string, JiraIssue[]]> {
   return Array.from(groups.entries())
 }
 
+function getDueDateClass(dueDate: string | null): 'overdue' | 'soon' | 'normal' {
+  if (!dueDate) return 'normal'
+  const diffDays = Math.ceil((new Date(dueDate).getTime() - Date.now()) / 86_400_000)
+  if (diffDays < 0) return 'overdue'
+  if (diffDays <= 3) return 'soon'
+  return 'normal'
+}
+
 function App() {
   const [siteUrl, setSiteUrl] = useState(import.meta.env.VITE_JIRA_SITE_URL ?? '')
   const [email, setEmail] = useState(import.meta.env.VITE_JIRA_EMAIL ?? '')
@@ -69,75 +77,95 @@ function App() {
   }
 
   return (
-    <div style={{ fontFamily: 'sans-serif', padding: 24, maxWidth: 720, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="app">
+      <div className="header">
         <h1>WorkLens</h1>
-        <button onClick={() => setShowSettings((prev) => !prev)} title="Jira 설정">
+        <button
+          className="icon-button"
+          onClick={() => setShowSettings((prev) => !prev)}
+          title="Jira 설정"
+        >
           ⚙️
         </button>
       </div>
 
       {showSettings && (
-        <section
-          style={{ marginBottom: 24, padding: 16, border: '1px solid #ddd', borderRadius: 8 }}
-        >
-          <h2 style={{ fontSize: 16, marginTop: 0 }}>Jira 설정</h2>
-          <div style={{ display: 'grid', gap: 8 }}>
+        <section className="card">
+          <h2>Jira 설정</h2>
+          <div style={{ display: 'grid', gap: 10 }}>
             <input
+              className="field"
               placeholder="Jira 사이트 URL (예: https://yourcompany.atlassian.net)"
               value={siteUrl}
               onChange={(e) => setSiteUrl(e.target.value)}
             />
-            <input placeholder="이메일" value={email} onChange={(e) => setEmail(e.target.value)} />
             <input
+              className="field"
+              placeholder="이메일"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <input
+              className="field"
               placeholder="API 토큰"
               type="password"
               value={apiToken}
               onChange={(e) => setApiToken(e.target.value)}
             />
-            <button onClick={handleSaveConfig}>저장하고 불러오기</button>
+            <button className="btn-primary" onClick={handleSaveConfig}>
+              저장하고 불러오기
+            </button>
           </div>
         </section>
       )}
 
-      <section>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: 16 }}>내 담당 티켓</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <section className="card">
+        <div className="section-header">
+          <h2>내 담당 티켓</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {lastUpdated && (
-              <span style={{ fontSize: 12, color: '#888' }}>
+              <span className="meta">
                 마지막 업데이트 {lastUpdated.toLocaleTimeString('ko-KR')}
               </span>
             )}
-            <button onClick={handleFetch} disabled={!configured || loading}>
+            <button className="btn-ghost" onClick={handleFetch} disabled={!configured || loading}>
               {loading ? '불러오는 중...' : '새로고침'}
             </button>
           </div>
         </div>
 
-        {error && <p style={{ color: 'crimson' }}>{error}</p>}
+        {error && <div className="error-banner">{error}</div>}
 
-        {!loading && !error && configured && issues.length === 0 && <p>표시할 티켓이 없습니다.</p>}
+        {!loading && !error && configured && issues.length === 0 && (
+          <div className="empty-state">표시할 티켓이 없습니다.</div>
+        )}
 
         {groupByStatus(issues).map(([status, items]) => (
-          <div key={status} style={{ marginBottom: 16 }}>
-            <h3 style={{ fontSize: 13, color: '#666', margin: '12px 0 4px' }}>
-              {status} ({items.length})
-            </h3>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
+          <div key={status} className="status-group">
+            <span className="status-badge">
+              {status} {items.length}
+            </span>
+            <ul className="issue-list">
               {items.map((issue) => (
-                <li key={issue.key} style={{ padding: '8px 0', borderBottom: '1px solid #eee' }}>
-                  <a
-                    href={issue.url}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      openExternal(issue.url)
-                    }}
-                  >
-                    <strong>{issue.key}</strong>
-                  </a>{' '}
-                  {issue.summary}
-                  {issue.dueDate && <span> (마감 {issue.dueDate})</span>}
+                <li key={issue.key} className="issue-item">
+                  <div>
+                    <a
+                      className="issue-key"
+                      href={issue.url}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        openExternal(issue.url)
+                      }}
+                    >
+                      {issue.key}
+                    </a>{' '}
+                    <span className="issue-summary">{issue.summary}</span>
+                  </div>
+                  {issue.dueDate && (
+                    <span className={`due-date ${getDueDateClass(issue.dueDate)}`}>
+                      {issue.dueDate}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
