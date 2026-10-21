@@ -135,131 +135,139 @@ function App() {
         </button>
       </div>
 
-      {showSettings && (
-        <section className="card">
-          <h2>Jira 설정</h2>
-          <div style={{ display: 'grid', gap: 10 }}>
-            <input
-              className="field"
-              placeholder="Jira 사이트 URL (예: https://yourcompany.atlassian.net)"
-              value={siteUrl}
-              onChange={(e) => setSiteUrl(e.target.value)}
-            />
-            <input
-              className="field"
-              placeholder="이메일"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <input
-              className="field"
-              placeholder="API 토큰"
-              type="password"
-              value={apiToken}
-              onChange={(e) => setApiToken(e.target.value)}
-            />
-            <button className="btn-primary" onClick={handleSaveConfig}>
-              저장하고 불러오기
-            </button>
-          </div>
-        </section>
-      )}
+      <div className="layout">
+        <aside className="sidebar">
+          <section className="card">
+            <div className="section-header">
+              <h2>Claude 세션</h2>
+            </div>
 
-      <section className="card">
-        <div className="section-header">
-          <h2>내 담당 티켓</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {lastUpdated && (
-              <span className="meta">
-                마지막 업데이트 {lastUpdated.toLocaleTimeString('ko-KR')}
-              </span>
-            )}
-            <button className="btn-ghost" onClick={handleFetch} disabled={!configured || loading}>
-              {loading ? '불러오는 중...' : '새로고침'}
-            </button>
-          </div>
-        </div>
+            {claudeSessions.length === 0 && <div className="empty-state">세션이 없습니다.</div>}
 
-        {error && <div className="error-banner">{error}</div>}
-
-        {!loading && !error && configured && issues.length === 0 && (
-          <div className="empty-state">표시할 티켓이 없습니다.</div>
-        )}
-
-        {groupByStatus(issues).map(([status, items]) => (
-          <div key={status} className="status-group">
-            <span className="status-badge">
-              {status} {items.length}
-            </span>
-            <ul className="issue-list">
-              {items.map((issue) => {
-                const comment = commentsByIssueKey.get(issue.key)
-                return (
-                  <li key={issue.key} className="issue-item">
-                    <div className="issue-row">
-                      <div>
-                        <a
-                          className="issue-key"
-                          href={issue.url}
-                          onClick={(e) => {
-                            e.preventDefault()
-                            openExternal(issue.url)
-                          }}
-                        >
-                          {issue.key}
-                        </a>{' '}
-                        <span className="issue-summary">{issue.summary}</span>
-                      </div>
-                      {issue.dueDate && (
-                        <span className={`due-date ${getDueDateClass(issue.dueDate)}`}>
-                          {issue.dueDate}
-                        </span>
-                      )}
-                    </div>
-                    {comment && (
-                      <div className="issue-comment">
-                        💬 <strong>{comment.author}</strong> {comment.body}
-                        <span className="meta"> · {formatRelativeTime(comment.created)}</span>
-                      </div>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        ))}
-      </section>
-
-      <section className="card">
-        <div className="section-header">
-          <h2>Claude 세션</h2>
-        </div>
-
-        {claudeSessions.length === 0 && <div className="empty-state">세션이 없습니다.</div>}
-
-        <ul className="issue-list">
-          {claudeSessions.map((session) => (
-            <li key={session.sessionId} className="issue-item">
-              <div className="issue-row">
-                <div>
-                  <span className="issue-key" title={session.projectPath}>
+            <ul className="session-list">
+              {claudeSessions.map((session) => (
+                <li key={session.sessionId} className="session-item">
+                  <div className="session-title" title={session.projectPath}>
                     {session.projectPath.split('/').pop()}
-                  </span>{' '}
-                  <span className="issue-summary">{session.preview}</span>
-                </div>
-                <button
-                  className="btn-ghost"
-                  onClick={() => handleCopyResume(session)}
-                  title="이어하기 명령어 복사"
-                >
-                  {copiedSessionId === session.sessionId ? '복사됨!' : '이어하기'}
+                  </div>
+                  <div className="session-preview">{session.preview}</div>
+                  <div className="session-footer">
+                    <span className="meta">{formatRelativeTime(session.lastActive)}</span>
+                    <button
+                      className="btn-ghost"
+                      onClick={() => handleCopyResume(session)}
+                      title="이어하기 명령어 복사"
+                    >
+                      {copiedSessionId === session.sessionId ? '복사됨!' : '이어하기'}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </aside>
+
+        <main className="main">
+          {showSettings && (
+            <section className="card">
+              <h2>Jira 설정</h2>
+              <div style={{ display: 'grid', gap: 10 }}>
+                <input
+                  className="field"
+                  placeholder="Jira 사이트 URL (예: https://yourcompany.atlassian.net)"
+                  value={siteUrl}
+                  onChange={(e) => setSiteUrl(e.target.value)}
+                />
+                <input
+                  className="field"
+                  placeholder="이메일"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <input
+                  className="field"
+                  placeholder="API 토큰"
+                  type="password"
+                  value={apiToken}
+                  onChange={(e) => setApiToken(e.target.value)}
+                />
+                <button className="btn-primary" onClick={handleSaveConfig}>
+                  저장하고 불러오기
                 </button>
               </div>
-              <span className="meta">{formatRelativeTime(session.lastActive)}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+            </section>
+          )}
+
+          <section className="card">
+            <div className="section-header">
+              <h2>내 담당 티켓</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {lastUpdated && (
+                  <span className="meta">
+                    마지막 업데이트 {lastUpdated.toLocaleTimeString('ko-KR')}
+                  </span>
+                )}
+                <button
+                  className="btn-ghost"
+                  onClick={handleFetch}
+                  disabled={!configured || loading}
+                >
+                  {loading ? '불러오는 중...' : '새로고침'}
+                </button>
+              </div>
+            </div>
+
+            {error && <div className="error-banner">{error}</div>}
+
+            {!loading && !error && configured && issues.length === 0 && (
+              <div className="empty-state">표시할 티켓이 없습니다.</div>
+            )}
+
+            {groupByStatus(issues).map(([status, items]) => (
+              <div key={status} className="status-group">
+                <span className="status-badge">
+                  {status} {items.length}
+                </span>
+                <ul className="issue-list">
+                  {items.map((issue) => {
+                    const comment = commentsByIssueKey.get(issue.key)
+                    return (
+                      <li key={issue.key} className="issue-item">
+                        <div className="issue-row">
+                          <div>
+                            <a
+                              className="issue-key"
+                              href={issue.url}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                openExternal(issue.url)
+                              }}
+                            >
+                              {issue.key}
+                            </a>{' '}
+                            <span className="issue-summary">{issue.summary}</span>
+                          </div>
+                          {issue.dueDate && (
+                            <span className={`due-date ${getDueDateClass(issue.dueDate)}`}>
+                              {issue.dueDate}
+                            </span>
+                          )}
+                        </div>
+                        {comment && (
+                          <div className="issue-comment">
+                            💬 <strong>{comment.author}</strong> {comment.body}
+                            <span className="meta"> · {formatRelativeTime(comment.created)}</span>
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            ))}
+          </section>
+        </main>
+      </div>
     </div>
   )
 }

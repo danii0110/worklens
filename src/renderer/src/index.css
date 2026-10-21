@@ -37,9 +37,25 @@ body {
 }
 
 .app {
-  max-width: 760px;
+  max-width: 1040px;
   margin: 0 auto;
   padding: 32px 24px 48px;
+}
+
+.layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
 }
 
 .header {
@@ -237,6 +253,45 @@ body {
 }
 .due-date.normal {
   color: var(--text-muted);
+}
+
+.session-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.session-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.session-item:last-child {
+  border-bottom: none;
+}
+
+.session-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-preview {
+  font-size: 13px;
+  margin: 4px 0 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.session-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .empty-state {
