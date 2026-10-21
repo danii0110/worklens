@@ -3,7 +3,7 @@ import { join } from 'path'
 import { loadConfig, saveConfig, type JiraConfig } from './store'
 import { fetchMyIssues, fetchRecentComments, type JiraIssue } from './jira'
 import { listClaudeSessions } from './claudeSessions'
-import { registerTerminalHandlers } from './terminal'
+import { registerChatHandlers } from './chat'
 
 const iconPath = join(__dirname, '../../resources/icon.png')
 
@@ -67,7 +67,7 @@ app.whenReady().then(() => {
   ipcMain.handle('claude:listSessions', () => listClaudeSessions())
 
   const mainWindow = createWindow()
-  registerTerminalHandlers(mainWindow)
+  registerChatHandlers(mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

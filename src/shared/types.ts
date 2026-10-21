@@ -28,3 +28,10 @@ export interface ClaudeSession {
   lastActive: string
   preview: string
 }
+
+export type ChatEvent =
+  | { type: 'assistant-text'; text: string }
+  | { type: 'tool-use'; id: string; name: string }
+  | { type: 'permission-request'; id: string; toolName: string; input: Record<string, unknown> }
+  | { type: 'turn-complete' }
+  | { type: 'error'; message: string }

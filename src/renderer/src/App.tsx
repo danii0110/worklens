@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import TerminalPanel from './TerminalPanel'
+import ChatPanel from './ChatPanel'
 import { usePolling } from './usePolling'
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000
@@ -268,7 +268,7 @@ function App() {
       </div>
 
       {activeSession && (
-        <TerminalPanel
+        <ChatPanel
           title={projectBasename(activeSession.projectPath)}
           sessionId={activeSession.sessionId}
           onClose={() => setActiveSession(null)}
