@@ -24,9 +24,10 @@ Conventional Commits 형식 사용 (`feat:`, `fix:`, `style:`, `refactor:` 등).
   ```
   env -u GITHUB_TOKEN gh <command>
   ```
-- `git push`도 동일한 이유로 아래 패턴으로 실행 (전역 git 설정은 건드리지 않고 이 호출에만 개인 계정 자격 증명 사용):
+- `git push`는 `gh auth git-credential`에 의존하지 말 것 — 그건 gh의 "활성 계정"이라는 전역·가변 상태를 따라가는데, 그 값은 사용자가 다른 이유로 언제든 바꿀 수 있어서(예: 회사 작업용으로 daincheon으로 되돌리기) 이 레포 push가 예고 없이 깨질 수 있다(실제로 2026-10-22 한 번 발생). 대신 danii0110 계정 토큰을 "활성 계정"과 무관하게 명시적으로 뽑아서 URL에 꽂아 push:
   ```
-  env -u GITHUB_TOKEN git -c credential.https://github.com.helper= -c credential.https://github.com.helper='!gh auth git-credential' push
+  TOKEN=$(env -u GITHUB_TOKEN gh auth token -u danii0110)
+  git push "https://danii0110:${TOKEN}@github.com/danii0110/worklens.git" main
   ```
 
 ## 비밀정보/개인정보
