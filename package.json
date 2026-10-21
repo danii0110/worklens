@@ -8,6 +8,7 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "prepare": "husky",
+    "postinstall": "electron-rebuild -w node-pty",
     "commit": "cz",
     "lint": "eslint .",
     "format": "prettier --write ."
@@ -32,6 +33,7 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
+    "@electron/rebuild": "^4.2.1",
     "@eslint/js": "^9.39.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -53,6 +55,9 @@
     "vite": "^8.3.4"
   },
   "dependencies": {
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "node-pty": "^1.1.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   }

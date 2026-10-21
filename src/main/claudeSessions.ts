@@ -97,6 +97,17 @@ async function readSessionMeta(filePath: string): Promise<{ preview: string; cwd
   }
 }
 
+export async function resolveSessionCwd(sessionId: string): Promise<string | null> {
+  if (!/^[a-f0-9-]{36}$/i.test(sessionId)) return null
+
+  const root = join(homedir(), '.claude', 'projects')
+  const match = collectSessionFiles(root).find((session) => session.sessionId === sessionId)
+  if (!match) return null
+
+  const { cwd } = await readSessionMeta(match.filePath)
+  return cwd ?? match.fallbackProjectPath
+}
+
 export async function listClaudeSessions(limit = 30): Promise<ClaudeSession[]> {
   const root = join(homedir(), '.claude', 'projects')
   const sessions = collectSessionFiles(root)

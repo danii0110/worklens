@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import TerminalPanel from './TerminalPanel'
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000
 
@@ -7,6 +8,10 @@ type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[
 type ClaudeSession = Awaited<ReturnType<typeof window.api.listClaudeSessions>>[number]
 
 const STATUS_ORDER = ['진행 중', '개발완료', '미해결']
+
+function projectBasename(projectPath: string): string {
+  return projectPath.split('/').pop() ?? projectPath
+}
 
 function groupByStatus(issues: JiraIssue[]): Array<[string, JiraIssue[]]> {
   const groups = new Map<string, JiraIssue[]>()
@@ -54,7 +59,7 @@ function App() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [claudeSessions, setClaudeSessions] = useState<ClaudeSession[]>([])
-  const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null)
+  const [activeSession, setActiveSession] = useState<ClaudeSession | null>(null)
 
   const handleFetch = useCallback(async (): Promise<void> => {
     setLoading(true)
@@ -102,13 +107,6 @@ function App() {
     return () => clearInterval(interval)
   }, [handleFetchSessions])
 
-  async function handleCopyResume(session: ClaudeSession): Promise<void> {
-    const command = `cd "${session.projectPath}" && claude --resume ${session.sessionId}`
-    await navigator.clipboard.writeText(command)
-    setCopiedSessionId(session.sessionId)
-    setTimeout(() => setCopiedSessionId(null), 1500)
-  }
-
   async function handleSaveConfig(): Promise<void> {
     await window.api.saveConfig({ siteUrl, email, apiToken })
     setConfigured(true)
@@ -148,17 +146,17 @@ function App() {
               {claudeSessions.map((session) => (
                 <li key={session.sessionId} className="session-item">
                   <div className="session-title" title={session.projectPath}>
-                    {session.projectPath.split('/').pop()}
+                    {projectBasename(session.projectPath)}
                   </div>
                   <div className="session-preview">{session.preview}</div>
                   <div className="session-footer">
                     <span className="meta">{formatRelativeTime(session.lastActive)}</span>
                     <button
                       className="btn-ghost"
-                      onClick={() => handleCopyResume(session)}
-                      title="이어하기 명령어 복사"
+                      onClick={() => setActiveSession(session)}
+                      title="이 세션 이어서 대화하기"
                     >
-                      {copiedSessionId === session.sessionId ? '복사됨!' : '이어하기'}
+                      이어하기
                     </button>
                   </div>
                 </li>
@@ -268,6 +266,14 @@ function App() {
           </section>
         </main>
       </div>
+
+      {activeSession && (
+        <TerminalPanel
+          title={projectBasename(activeSession.projectPath)}
+          sessionId={activeSession.sessionId}
+          onClose={() => setActiveSession(null)}
+        />
+      )}
     </div>
   )
 }

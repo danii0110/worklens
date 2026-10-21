@@ -3,6 +3,7 @@ import { join } from 'path'
 import { loadConfig, saveConfig, type JiraConfig } from './store'
 import { fetchMyIssues, fetchRecentComments } from './jira'
 import { listClaudeSessions } from './claudeSessions'
+import { registerTerminalHandlers } from './terminal'
 
 const iconPath = join(__dirname, '../../resources/icon.png')
 
@@ -14,7 +15,7 @@ function requireConfig(): JiraConfig {
   return config as JiraConfig
 }
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 750,
@@ -40,6 +41,8 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return mainWindow
 }
 
 app.whenReady().then(() => {
@@ -65,7 +68,8 @@ app.whenReady().then(() => {
 
   ipcMain.handle('claude:listSessions', () => listClaudeSessions())
 
-  createWindow()
+  const mainWindow = createWindow()
+  registerTerminalHandlers(mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
