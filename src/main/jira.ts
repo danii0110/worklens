@@ -8,10 +8,25 @@ export interface JiraIssue {
   url: string
 }
 
+interface JiraApiIssue {
+  key: string
+  fields: {
+    summary: string
+    status?: { name: string }
+    duedate?: string | null
+  }
+}
+
+interface JiraSearchResponse {
+  issues: JiraApiIssue[]
+}
+
 export async function fetchMyIssues(config: JiraConfig): Promise<JiraIssue[]> {
   const baseUrl = config.siteUrl.replace(/\/$/, '')
   const auth = Buffer.from(`${config.email}:${config.apiToken}`).toString('base64')
-  const jql = encodeURIComponent('assignee = currentUser() AND resolution = Unresolved ORDER BY duedate ASC')
+  const jql = encodeURIComponent(
+    'assignee = currentUser() AND resolution = Unresolved ORDER BY duedate ASC'
+  )
 
   const res = await fetch(
     `${baseUrl}/rest/api/3/search?jql=${jql}&fields=summary,status,duedate&maxResults=50`,
@@ -27,9 +42,9 @@ export async function fetchMyIssues(config: JiraConfig): Promise<JiraIssue[]> {
     throw new Error(`Jira API 오류 (${res.status}): ${await res.text()}`)
   }
 
-  const data = await res.json()
+  const data: JiraSearchResponse = await res.json()
 
-  return data.issues.map((issue: any) => ({
+  return data.issues.map((issue) => ({
     key: issue.key,
     summary: issue.fields.summary,
     status: issue.fields.status?.name ?? '',

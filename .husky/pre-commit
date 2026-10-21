@@ -12,3 +12,5 @@ if git diff --cached -U0 | grep -E '^\+' | grep -vE '^\+\+\+' | grep -qiE "$PATT
   echo "   public 레포에 개인정보·사내 정보가 올라가지 않도록 하드코딩 대신 .env(gitignore)로 분리하세요."
   exit 1
 fi
+
+npx lint-staged

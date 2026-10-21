@@ -9,15 +9,6 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    window.api.getConfig().then((config) => {
-      if (config.siteUrl) setSiteUrl(config.siteUrl)
-      if (config.email) setEmail(config.email)
-      if (config.apiToken) setApiToken(config.apiToken)
-      setConfigured(Boolean(config.siteUrl && config.email && config.apiToken))
-    })
-  }, [])
-
   async function handleFetch(): Promise<void> {
     setLoading(true)
     setError(null)
@@ -31,14 +22,22 @@ function App() {
     }
   }
 
+  useEffect(() => {
+    window.api.getConfig().then((config) => {
+      if (config.siteUrl) setSiteUrl(config.siteUrl)
+      if (config.email) setEmail(config.email)
+      if (config.apiToken) setApiToken(config.apiToken)
+      const isConfigured = Boolean(config.siteUrl && config.email && config.apiToken)
+      setConfigured(isConfigured)
+      if (isConfigured) handleFetch()
+    })
+  }, [])
+
   async function handleSaveConfig(): Promise<void> {
     await window.api.saveConfig({ siteUrl, email, apiToken })
     setConfigured(true)
+    handleFetch()
   }
-
-  useEffect(() => {
-    if (configured) handleFetch()
-  }, [configured])
 
   function openExternal(url: string): void {
     window.open(url, '_blank')
