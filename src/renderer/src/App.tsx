@@ -2,12 +2,24 @@ import { useCallback, useEffect, useState } from 'react'
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000
 
+type JiraIssue = Awaited<ReturnType<typeof window.api.fetchMyIssues>>[number]
+
+function groupByStatus(issues: JiraIssue[]): Array<[string, JiraIssue[]]> {
+  const groups = new Map<string, JiraIssue[]>()
+  for (const issue of issues) {
+    const group = groups.get(issue.status) ?? []
+    group.push(issue)
+    groups.set(issue.status, group)
+  }
+  return Array.from(groups.entries())
+}
+
 function App() {
   const [siteUrl, setSiteUrl] = useState(import.meta.env.VITE_JIRA_SITE_URL ?? '')
   const [email, setEmail] = useState(import.meta.env.VITE_JIRA_EMAIL ?? '')
   const [apiToken, setApiToken] = useState('')
   const [configured, setConfigured] = useState(false)
-  const [issues, setIssues] = useState<Awaited<ReturnType<typeof window.api.fetchMyIssues>>>([])
+  const [issues, setIssues] = useState<JiraIssue[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
@@ -95,23 +107,30 @@ function App() {
 
         {!loading && !error && configured && issues.length === 0 && <p>표시할 티켓이 없습니다.</p>}
 
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {issues.map((issue) => (
-            <li key={issue.key} style={{ padding: '8px 0', borderBottom: '1px solid #eee' }}>
-              <a
-                href={issue.url}
-                onClick={(e) => {
-                  e.preventDefault()
-                  openExternal(issue.url)
-                }}
-              >
-                <strong>{issue.key}</strong>
-              </a>{' '}
-              {issue.summary} — <em>{issue.status}</em>
-              {issue.dueDate && <span> (마감 {issue.dueDate})</span>}
-            </li>
-          ))}
-        </ul>
+        {groupByStatus(issues).map(([status, items]) => (
+          <div key={status} style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 13, color: '#666', margin: '12px 0 4px' }}>
+              {status} ({items.length})
+            </h3>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {items.map((issue) => (
+                <li key={issue.key} style={{ padding: '8px 0', borderBottom: '1px solid #eee' }}>
+                  <a
+                    href={issue.url}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      openExternal(issue.url)
+                    }}
+                  >
+                    <strong>{issue.key}</strong>
+                  </a>{' '}
+                  {issue.summary}
+                  {issue.dueDate && <span> (마감 {issue.dueDate})</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
     </div>
   )
