@@ -23,6 +23,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
 
   const handleFetch = useCallback(async (): Promise<void> => {
     setLoading(true)
@@ -45,6 +46,7 @@ function App() {
       if (config.apiToken) setApiToken(config.apiToken)
       const isConfigured = Boolean(config.siteUrl && config.email && config.apiToken)
       setConfigured(isConfigured)
+      setShowSettings(!isConfigured)
       if (isConfigured) handleFetch()
     })
   }, [handleFetch])
@@ -58,6 +60,7 @@ function App() {
   async function handleSaveConfig(): Promise<void> {
     await window.api.saveConfig({ siteUrl, email, apiToken })
     setConfigured(true)
+    setShowSettings(false)
     handleFetch()
   }
 
@@ -67,26 +70,35 @@ function App() {
 
   return (
     <div style={{ fontFamily: 'sans-serif', padding: 24, maxWidth: 720, margin: '0 auto' }}>
-      <h1>WorkLens</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>WorkLens</h1>
+        <button onClick={() => setShowSettings((prev) => !prev)} title="Jira 설정">
+          ⚙️
+        </button>
+      </div>
 
-      <section style={{ marginBottom: 24, padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
-        <h2 style={{ fontSize: 16, marginTop: 0 }}>Jira 설정</h2>
-        <div style={{ display: 'grid', gap: 8 }}>
-          <input
-            placeholder="Jira 사이트 URL (예: https://yourcompany.atlassian.net)"
-            value={siteUrl}
-            onChange={(e) => setSiteUrl(e.target.value)}
-          />
-          <input placeholder="이메일" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input
-            placeholder="API 토큰"
-            type="password"
-            value={apiToken}
-            onChange={(e) => setApiToken(e.target.value)}
-          />
-          <button onClick={handleSaveConfig}>저장하고 불러오기</button>
-        </div>
-      </section>
+      {showSettings && (
+        <section
+          style={{ marginBottom: 24, padding: 16, border: '1px solid #ddd', borderRadius: 8 }}
+        >
+          <h2 style={{ fontSize: 16, marginTop: 0 }}>Jira 설정</h2>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <input
+              placeholder="Jira 사이트 URL (예: https://yourcompany.atlassian.net)"
+              value={siteUrl}
+              onChange={(e) => setSiteUrl(e.target.value)}
+            />
+            <input placeholder="이메일" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input
+              placeholder="API 토큰"
+              type="password"
+              value={apiToken}
+              onChange={(e) => setApiToken(e.target.value)}
+            />
+            <button onClick={handleSaveConfig}>저장하고 불러오기</button>
+          </div>
+        </section>
+      )}
 
       <section>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
