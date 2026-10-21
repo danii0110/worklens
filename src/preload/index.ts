@@ -23,12 +23,20 @@ export interface RecentComment {
   url: string
 }
 
+export interface ClaudeSession {
+  sessionId: string
+  projectPath: string
+  lastActive: string
+  preview: string
+}
+
 const api = {
   getConfig: (): Promise<Partial<JiraConfig>> => ipcRenderer.invoke('config:get'),
   saveConfig: (config: JiraConfig): Promise<void> => ipcRenderer.invoke('config:save', config),
   fetchMyIssues: (): Promise<JiraIssue[]> => ipcRenderer.invoke('jira:fetchMyIssues'),
   fetchRecentComments: (): Promise<RecentComment[]> =>
-    ipcRenderer.invoke('jira:fetchRecentComments')
+    ipcRenderer.invoke('jira:fetchRecentComments'),
+  listClaudeSessions: (): Promise<ClaudeSession[]> => ipcRenderer.invoke('claude:listSessions')
 }
 
 contextBridge.exposeInMainWorld('api', api)

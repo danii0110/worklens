@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, nativeImage } from 'electron'
 import { join } from 'path'
 import { loadConfig, saveConfig, type JiraConfig } from './store'
 import { fetchMyIssues, fetchRecentComments } from './jira'
+import { listClaudeSessions } from './claudeSessions'
 
 const iconPath = join(__dirname, '../../resources/icon.png')
 
@@ -61,6 +62,8 @@ app.whenReady().then(() => {
     const issues = await fetchMyIssues(config)
     return fetchRecentComments(config, issues)
   })
+
+  ipcMain.handle('claude:listSessions', () => listClaudeSessions())
 
   createWindow()
 

@@ -4,6 +4,7 @@ const POLL_INTERVAL_MS = 5 * 60 * 1000
 
 type JiraIssue = Awaited<ReturnType<typeof window.api.fetchMyIssues>>[number]
 type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[number]
+type ClaudeSession = Awaited<ReturnType<typeof window.api.listClaudeSessions>>[number]
 
 const STATUS_ORDER = ['진행 중', '개발완료', '미해결']
 
@@ -52,6 +53,8 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [claudeSessions, setClaudeSessions] = useState<ClaudeSession[]>([])
+  const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null)
 
   const handleFetch = useCallback(async (): Promise<void> => {
     setLoading(true)
@@ -88,6 +91,23 @@ function App() {
     const interval = setInterval(handleFetch, POLL_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [configured, handleFetch])
+
+  const handleFetchSessions = useCallback(async (): Promise<void> => {
+    setClaudeSessions(await window.api.listClaudeSessions())
+  }, [])
+
+  useEffect(() => {
+    Promise.resolve().then(handleFetchSessions)
+    const interval = setInterval(handleFetchSessions, POLL_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [handleFetchSessions])
+
+  async function handleCopyResume(session: ClaudeSession): Promise<void> {
+    const command = `cd "${session.projectPath}" && claude --resume ${session.sessionId}`
+    await navigator.clipboard.writeText(command)
+    setCopiedSessionId(session.sessionId)
+    setTimeout(() => setCopiedSessionId(null), 1500)
+  }
 
   async function handleSaveConfig(): Promise<void> {
     await window.api.saveConfig({ siteUrl, email, apiToken })
@@ -208,6 +228,37 @@ function App() {
             </ul>
           </div>
         ))}
+      </section>
+
+      <section className="card">
+        <div className="section-header">
+          <h2>Claude 세션</h2>
+        </div>
+
+        {claudeSessions.length === 0 && <div className="empty-state">세션이 없습니다.</div>}
+
+        <ul className="issue-list">
+          {claudeSessions.map((session) => (
+            <li key={session.sessionId} className="issue-item">
+              <div className="issue-row">
+                <div>
+                  <span className="issue-key" title={session.projectPath}>
+                    {session.projectPath.split('/').pop()}
+                  </span>{' '}
+                  <span className="issue-summary">{session.preview}</span>
+                </div>
+                <button
+                  className="btn-ghost"
+                  onClick={() => handleCopyResume(session)}
+                  title="이어하기 명령어 복사"
+                >
+                  {copiedSessionId === session.sessionId ? '복사됨!' : '이어하기'}
+                </button>
+              </div>
+              <span className="meta">{formatRelativeTime(session.lastActive)}</span>
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   )
