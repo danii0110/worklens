@@ -14,10 +14,21 @@ export interface JiraIssue {
   url: string
 }
 
+export interface RecentComment {
+  issueKey: string
+  issueSummary: string
+  author: string
+  body: string
+  created: string
+  url: string
+}
+
 const api = {
   getConfig: (): Promise<Partial<JiraConfig>> => ipcRenderer.invoke('config:get'),
   saveConfig: (config: JiraConfig): Promise<void> => ipcRenderer.invoke('config:save', config),
-  fetchMyIssues: (): Promise<JiraIssue[]> => ipcRenderer.invoke('jira:fetchMyIssues')
+  fetchMyIssues: (): Promise<JiraIssue[]> => ipcRenderer.invoke('jira:fetchMyIssues'),
+  fetchRecentComments: (): Promise<RecentComment[]> =>
+    ipcRenderer.invoke('jira:fetchRecentComments')
 }
 
 contextBridge.exposeInMainWorld('api', api)

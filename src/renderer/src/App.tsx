@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 const POLL_INTERVAL_MS = 5 * 60 * 1000
 
 type JiraIssue = Awaited<ReturnType<typeof window.api.fetchMyIssues>>[number]
+type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[number]
 
 function groupByStatus(issues: JiraIssue[]): Array<[string, JiraIssue[]]> {
   const groups = new Map<string, JiraIssue[]>()
@@ -22,12 +23,22 @@ function getDueDateClass(dueDate: string | null): 'overdue' | 'soon' | 'normal' 
   return 'normal'
 }
 
+function formatRelativeTime(iso: string): string {
+  const diffMinutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000)
+  if (diffMinutes < 1) return '방금 전'
+  if (diffMinutes < 60) return `${diffMinutes}분 전`
+  const diffHours = Math.floor(diffMinutes / 60)
+  if (diffHours < 24) return `${diffHours}시간 전`
+  return `${Math.floor(diffHours / 24)}일 전`
+}
+
 function App() {
   const [siteUrl, setSiteUrl] = useState(import.meta.env.VITE_JIRA_SITE_URL ?? '')
   const [email, setEmail] = useState(import.meta.env.VITE_JIRA_EMAIL ?? '')
   const [apiToken, setApiToken] = useState('')
   const [configured, setConfigured] = useState(false)
   const [issues, setIssues] = useState<JiraIssue[]>([])
+  const [comments, setComments] = useState<RecentComment[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
@@ -37,8 +48,12 @@ function App() {
     setLoading(true)
     setError(null)
     try {
-      const result = await window.api.fetchMyIssues()
-      setIssues(result)
+      const [issueResult, commentResult] = await Promise.all([
+        window.api.fetchMyIssues(),
+        window.api.fetchRecentComments()
+      ])
+      setIssues(issueResult)
+      setComments(commentResult)
       setLastUpdated(new Date())
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -171,6 +186,39 @@ function App() {
             </ul>
           </div>
         ))}
+      </section>
+
+      <section className="card">
+        <div className="section-header">
+          <h2>최근 댓글</h2>
+        </div>
+
+        {!loading && !error && configured && comments.length === 0 && (
+          <div className="empty-state">최근 댓글이 없습니다.</div>
+        )}
+
+        <ul className="issue-list">
+          {comments.map((comment) => (
+            <li key={`${comment.issueKey}-${comment.created}`} className="issue-item">
+              <div>
+                <a
+                  className="issue-key"
+                  href={comment.url}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    openExternal(comment.url)
+                  }}
+                >
+                  {comment.issueKey}
+                </a>{' '}
+                <span className="issue-summary">
+                  <strong>{comment.author}</strong> {comment.body}
+                </span>
+              </div>
+              <span className="due-date normal">{formatRelativeTime(comment.created)}</span>
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   )

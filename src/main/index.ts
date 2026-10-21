@@ -1,7 +1,15 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { loadConfig, saveConfig, type JiraConfig } from './store'
-import { fetchMyIssues } from './jira'
+import { fetchMyIssues, fetchRecentComments } from './jira'
+
+function requireConfig(): JiraConfig {
+  const config = loadConfig()
+  if (!config.siteUrl || !config.email || !config.apiToken) {
+    throw new Error('Jira 설정이 없습니다. 설정을 먼저 입력해주세요.')
+  }
+  return config as JiraConfig
+}
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -38,11 +46,13 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('jira:fetchMyIssues', async () => {
-    const config = loadConfig()
-    if (!config.siteUrl || !config.email || !config.apiToken) {
-      throw new Error('Jira 설정이 없습니다. 설정을 먼저 입력해주세요.')
-    }
-    return fetchMyIssues(config as JiraConfig)
+    return fetchMyIssues(requireConfig())
+  })
+
+  ipcMain.handle('jira:fetchRecentComments', async () => {
+    const config = requireConfig()
+    const issues = await fetchMyIssues(config)
+    return fetchRecentComments(config, issues)
   })
 
   createWindow()
