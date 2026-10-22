@@ -442,6 +442,12 @@ function App() {
               <div className="section-header">
                 <h2>내 담당 티켓</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input
+                    className="field search-field"
+                    placeholder="티켓 검색"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                   {lastUpdated && (
                     <span className="meta">
                       마지막 업데이트 {lastUpdated.toLocaleTimeString('ko-KR')}
@@ -485,14 +491,6 @@ function App() {
                   ))}
                 </div>
               )}
-
-              <input
-                className="field"
-                style={{ marginBottom: 14 }}
-                placeholder="티켓 검색 (키 또는 제목)"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
 
               {error && <div className="error-banner">{error}</div>}
 
@@ -560,9 +558,8 @@ function App() {
                             <button
                               className="archive-btn"
                               onClick={() => toggleArchive(issue.key)}
-                              title={viewMode === 'archived' ? '보관 해제' : '보관'}
                             >
-                              {viewMode === 'archived' ? '↩' : '🗄'}
+                              {viewMode === 'archived' ? '꺼내기' : '보관'}
                             </button>
                           </div>
                           {comment && (

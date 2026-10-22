@@ -216,6 +216,12 @@ body,
   outline-offset: 1px;
 }
 
+.search-field {
+  width: 160px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
 .rename-input {
   padding: 4px 8px;
   font-size: 13px;
@@ -302,24 +308,28 @@ body,
 
 .view-toggle {
   display: flex;
-  gap: 6px;
   margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .view-toggle-btn {
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
+  flex: 1;
+  padding: 8px 14px;
+  border: none;
   background: var(--bg);
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
+.view-toggle-btn + .view-toggle-btn {
+  border-left: 1px solid var(--border);
+}
 .view-toggle-active {
   background: var(--accent);
   color: var(--accent-contrast);
-  border-color: var(--accent);
 }
 
 .status-summary {
@@ -385,10 +395,12 @@ body,
 
 .archive-btn {
   flex-shrink: 0;
+  white-space: nowrap;
   border: none;
   background: transparent;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 12.5px;
+  font-weight: 600;
   padding: 0 2px;
   cursor: pointer;
   opacity: 0;
