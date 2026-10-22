@@ -101,24 +101,28 @@ function App() {
   const [renameDraft, setRenameDraft] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [priorityMap, setPriorityMap] = useState<PriorityMap>({})
+  const [draggedKey, setDraggedKey] = useState<string | null>(null)
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null)
   const seenCommentKeysRef = useRef<Set<string> | null>(null)
 
   useEffect(() => {
     window.api.getPriorityOrder().then(setPriorityMap)
   }, [])
 
-  function moveIssue(
+  function reorderIssue(
     status: string,
     displayOrder: string[],
-    issueKey: string,
-    direction: -1 | 1
+    draggedIssueKey: string,
+    targetIssueKey: string
   ): void {
-    const index = displayOrder.indexOf(issueKey)
-    const swapWith = index + direction
-    if (index === -1 || swapWith < 0 || swapWith >= displayOrder.length) return
+    if (draggedIssueKey === targetIssueKey) return
+    const fromIndex = displayOrder.indexOf(draggedIssueKey)
+    if (fromIndex === -1 || displayOrder.indexOf(targetIssueKey) === -1) return
 
     const nextOrder = [...displayOrder]
-    ;[nextOrder[index], nextOrder[swapWith]] = [nextOrder[swapWith], nextOrder[index]]
+    nextOrder.splice(fromIndex, 1)
+    nextOrder.splice(nextOrder.indexOf(targetIssueKey), 0, draggedIssueKey)
+
     const nextPriorityMap = { ...priorityMap, [status]: nextOrder }
     setPriorityMap(nextPriorityMap)
     window.api.savePriorityOrder(nextPriorityMap)
@@ -444,31 +448,40 @@ function App() {
                     {status} {items.length}
                   </span>
                   <ul className="issue-list">
-                    {items.map((issue, index) => {
+                    {items.map((issue) => {
                       const comment = commentsByIssueKey.get(issue.key)
                       const displayOrder = items.map((i) => i.key)
                       return (
-                        <li key={issue.key} className="issue-item">
+                        <li
+                          key={issue.key}
+                          className={`issue-item ${dragOverKey === issue.key ? 'issue-item-drag-over' : ''}`}
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                            setDragOverKey(issue.key)
+                          }}
+                          onDragLeave={() => setDragOverKey(null)}
+                          onDrop={(e) => {
+                            e.preventDefault()
+                            if (draggedKey)
+                              reorderIssue(status, displayOrder, draggedKey, issue.key)
+                            setDraggedKey(null)
+                            setDragOverKey(null)
+                          }}
+                        >
                           <div className="issue-row">
-                            <div className="issue-priority-controls">
-                              <button
-                                className="priority-btn"
-                                disabled={index === 0}
-                                onClick={() => moveIssue(status, displayOrder, issue.key, -1)}
-                                title="우선순위 올리기"
-                              >
-                                ▲
-                              </button>
-                              <button
-                                className="priority-btn"
-                                disabled={index === items.length - 1}
-                                onClick={() => moveIssue(status, displayOrder, issue.key, 1)}
-                                title="우선순위 내리기"
-                              >
-                                ▼
-                              </button>
-                            </div>
-                            <div>
+                            <span
+                              className="drag-handle"
+                              draggable
+                              onDragStart={() => setDraggedKey(issue.key)}
+                              onDragEnd={() => {
+                                setDraggedKey(null)
+                                setDragOverKey(null)
+                              }}
+                              title="드래그해서 순서 변경"
+                            >
+                              ⠿
+                            </span>
+                            <div className="issue-title-group">
                               <a
                                 className="issue-key"
                                 href={issue.url}
