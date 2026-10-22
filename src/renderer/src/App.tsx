@@ -500,9 +500,6 @@ function App() {
 
               {groupedIssues.map(([status, items]) => (
                 <div key={status} className="status-group">
-                  <span className="status-badge">
-                    {status} {items.length}
-                  </span>
                   <ul className="issue-list">
                     {items.map((issue) => {
                       const comment = commentsByIssueKey.get(issue.key)
