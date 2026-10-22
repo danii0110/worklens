@@ -74,7 +74,6 @@ function App() {
   const [renameDraft, setRenameDraft] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const seenCommentKeysRef = useRef<Set<string> | null>(null)
-  const notifiedDeadlineKeysRef = useRef<Set<string>>(new Set())
 
   const notifyNewComments = useCallback((commentResult: RecentComment[]) => {
     const seen = seenCommentKeysRef.current
@@ -90,16 +89,6 @@ function App() {
     seenCommentKeysRef.current = nextKeys
   }, [])
 
-  const notifyApproachingDeadlines = useCallback((issueResult: JiraIssue[]) => {
-    for (const issue of issueResult) {
-      const urgency = getDueDateClass(issue.dueDate)
-      if (urgency === 'normal' || notifiedDeadlineKeysRef.current.has(issue.key)) continue
-      notifiedDeadlineKeysRef.current.add(issue.key)
-      const label = urgency === 'overdue' ? '마감 지남' : '마감 임박'
-      window.api.notify(`${issue.key} ${label}`, issue.summary)
-    }
-  }, [])
-
   const handleFetch = useCallback(async (): Promise<void> => {
     setLoading(true)
     setError(null)
@@ -107,7 +96,6 @@ function App() {
       const issueResult = await window.api.fetchMyIssues()
       const commentResult = await window.api.fetchRecentComments(issueResult)
       notifyNewComments(commentResult)
-      notifyApproachingDeadlines(issueResult)
       setIssues(issueResult)
       setComments(commentResult)
       setLastUpdated(new Date())
@@ -116,7 +104,7 @@ function App() {
     } finally {
       setLoading(false)
     }
-  }, [notifyNewComments, notifyApproachingDeadlines])
+  }, [notifyNewComments])
 
   useEffect(() => {
     window.api.getConfig().then((config) => {
