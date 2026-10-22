@@ -173,6 +173,7 @@ function App() {
     )
   }, [issues, searchQuery])
   const groupedIssues = useMemo(() => groupByStatus(filteredIssues), [filteredIssues])
+  const statusSummary = useMemo(() => groupByStatus(issues), [issues])
 
   return (
     <div className="app">
@@ -341,6 +342,16 @@ function App() {
                   </button>
                 </div>
               </div>
+
+              {statusSummary.length > 0 && (
+                <div className="status-summary">
+                  {statusSummary.map(([status, items]) => (
+                    <span key={status} className="status-summary-chip">
+                      {status} {items.length}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               <input
                 className="field"
