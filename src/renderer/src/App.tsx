@@ -72,6 +72,7 @@ function App() {
   const [activeTabId, setActiveTabId] = useState<string>(TICKETS_TAB)
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const handleFetch = useCallback(async (): Promise<void> => {
     setLoading(true)
@@ -163,7 +164,15 @@ function App() {
     () => new Map(comments.map((comment) => [comment.issueKey, comment])),
     [comments]
   )
-  const groupedIssues = useMemo(() => groupByStatus(issues), [issues])
+  const filteredIssues = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return issues
+    return issues.filter(
+      (issue) =>
+        issue.key.toLowerCase().includes(query) || issue.summary.toLowerCase().includes(query)
+    )
+  }, [issues, searchQuery])
+  const groupedIssues = useMemo(() => groupByStatus(filteredIssues), [filteredIssues])
 
   return (
     <div className="app">
@@ -333,10 +342,20 @@ function App() {
                 </div>
               </div>
 
+              <input
+                className="field"
+                style={{ marginBottom: 14 }}
+                placeholder="티켓 검색 (키 또는 제목)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+
               {error && <div className="error-banner">{error}</div>}
 
-              {!loading && !error && configured && issues.length === 0 && (
-                <div className="empty-state">표시할 티켓이 없습니다.</div>
+              {!loading && !error && configured && filteredIssues.length === 0 && (
+                <div className="empty-state">
+                  {searchQuery.trim() ? '검색 결과가 없습니다.' : '표시할 티켓이 없습니다.'}
+                </div>
               )}
 
               {groupedIssues.map(([status, items]) => (

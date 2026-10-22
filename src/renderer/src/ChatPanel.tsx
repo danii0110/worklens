@@ -19,6 +19,7 @@ interface ChatPanelProps {
 
 function ChatPanel({ sessionId }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(true)
   const [input, setInput] = useState('')
   const [pendingPermission, setPendingPermission] = useState<PendingPermission | null>(null)
   const [busy, setBusy] = useState(false)
@@ -28,6 +29,24 @@ function ChatPanel({ sessionId }: ChatPanelProps) {
   useEffect(() => {
     let disposed = false
     let cleanup = (): void => {}
+
+    window.api.chat.getHistory(sessionId).then((history) => {
+      if (disposed) return
+      const historyMessages: ChatMessage[] = history.map((entry) => ({
+        id: crypto.randomUUID(),
+        role: entry.role,
+        text: entry.text
+      }))
+      if (historyMessages.length > 0) {
+        historyMessages.push({
+          id: crypto.randomUUID(),
+          role: 'system',
+          text: '— 여기까지 이전 대화 —'
+        })
+      }
+      setMessages(historyMessages)
+      setLoadingHistory(false)
+    })
 
     window.api.chat.start(sessionId).then((chatId) => {
       if (disposed) {
@@ -86,6 +105,9 @@ function ChatPanel({ sessionId }: ChatPanelProps) {
   return (
     <div className="chat-panel">
       <div ref={scrollRef} className="chat-messages">
+        {loadingHistory && (
+          <div className="chat-bubble chat-bubble-system">이전 대화 불러오는 중...</div>
+        )}
         {messages.map((message) => (
           <div key={message.id} className={`chat-bubble chat-bubble-${message.role}`}>
             {message.text}

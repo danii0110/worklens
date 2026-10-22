@@ -30,6 +30,11 @@ export interface ClaudeSession {
   preview: string
 }
 
+export interface ChatHistoryEntry {
+  role: 'user' | 'assistant' | 'tool'
+  text: string
+}
+
 export type ChatEvent =
   | { type: 'assistant-text'; text: string }
   | { type: 'tool-use'; id: string; name: string }

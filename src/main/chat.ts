@@ -6,7 +6,7 @@ import {
   type CanUseTool,
   type PermissionResult
 } from '@anthropic-ai/claude-agent-sdk'
-import { resolveSessionCwd } from './claudeSessions'
+import { resolveSessionCwd, getChatHistory } from './claudeSessions'
 import type { ChatEvent } from '../shared/types'
 
 function emit(mainWindow: BrowserWindow, chatId: string, event: ChatEvent): void {
@@ -65,6 +65,8 @@ interface ChatSession {
 const chats = new Map<string, ChatSession>()
 
 export function registerChatHandlers(mainWindow: BrowserWindow): void {
+  ipcMain.handle('chat:getHistory', (_event, sessionId: string) => getChatHistory(sessionId))
+
   ipcMain.handle('chat:start', async (_event, sessionId: string) => {
     const cwd = await resolveSessionCwd(sessionId)
     if (!cwd) {

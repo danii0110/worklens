@@ -4,10 +4,11 @@ import type {
   JiraIssue,
   RecentComment,
   ClaudeSession,
-  ChatEvent
+  ChatEvent,
+  ChatHistoryEntry
 } from '../shared/types'
 
-export type { JiraConfig, JiraIssue, RecentComment, ClaudeSession, ChatEvent }
+export type { JiraConfig, JiraIssue, RecentComment, ClaudeSession, ChatEvent, ChatHistoryEntry }
 
 function subscribe<Args extends unknown[]>(
   channel: string,
@@ -31,6 +32,8 @@ const api = {
   renameClaudeSession: (sessionId: string, title: string): Promise<void> =>
     ipcRenderer.invoke('claude:renameSession', sessionId, title),
   chat: {
+    getHistory: (sessionId: string): Promise<ChatHistoryEntry[]> =>
+      ipcRenderer.invoke('chat:getHistory', sessionId),
     start: (sessionId: string): Promise<string> => ipcRenderer.invoke('chat:start', sessionId),
     send: (chatId: string, text: string): void => {
       ipcRenderer.send('chat:send', chatId, text)
