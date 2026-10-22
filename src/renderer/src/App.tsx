@@ -11,6 +11,14 @@ type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[
 type ClaudeSession = Awaited<ReturnType<typeof window.api.listClaudeSessions>>[number]
 type PriorityMap = Awaited<ReturnType<typeof window.api.getPriorityOrder>>
 type ArchivedKeys = Awaited<ReturnType<typeof window.api.getArchivedKeys>>
+type TicketSessionMap = Awaited<ReturnType<typeof window.api.getTicketSessions>>
+
+interface OpenTab {
+  tabId: string
+  session: ClaudeSession
+  kind: 'new' | 'resume'
+  ticketKey?: string
+}
 
 // Explicit order for known statuses; anything else falls back to its Jira
 // status category (in-progress-like, then new, then done) instead of an
@@ -88,6 +96,7 @@ function App() {
   const [siteUrl, setSiteUrl] = useState(import.meta.env.VITE_JIRA_SITE_URL ?? '')
   const [email, setEmail] = useState(import.meta.env.VITE_JIRA_EMAIL ?? '')
   const [apiToken, setApiToken] = useState('')
+  const [defaultProjectPath, setDefaultProjectPath] = useState('')
   const [configured, setConfigured] = useState(false)
   const [issues, setIssues] = useState<JiraIssue[]>([])
   const [comments, setComments] = useState<RecentComment[]>([])
@@ -96,7 +105,7 @@ function App() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [claudeSessions, setClaudeSessions] = useState<ClaudeSession[]>([])
-  const [openSessions, setOpenSessions] = useState<ClaudeSession[]>([])
+  const [openTabs, setOpenTabs] = useState<OpenTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string>(TICKETS_TAB)
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
@@ -107,11 +116,13 @@ function App() {
   const [archivedKeys, setArchivedKeys] = useState<ArchivedKeys>([])
   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [ticketSessions, setTicketSessions] = useState<TicketSessionMap>({})
   const seenCommentKeysRef = useRef<Set<string> | null>(null)
 
   useEffect(() => {
     window.api.getPriorityOrder().then(setPriorityMap)
     window.api.getArchivedKeys().then(setArchivedKeys)
+    window.api.getTicketSessions().then(setTicketSessions)
   }, [])
 
   function selectViewMode(mode: 'active' | 'archived'): void {
@@ -189,6 +200,7 @@ function App() {
       if (config.siteUrl) setSiteUrl(config.siteUrl)
       if (config.email) setEmail(config.email)
       if (config.apiToken) setApiToken(config.apiToken)
+      if (config.defaultProjectPath) setDefaultProjectPath(config.defaultProjectPath)
       const isConfigured = Boolean(config.siteUrl && config.email && config.apiToken)
       setConfigured(isConfigured)
       setShowSettings(!isConfigured)
@@ -204,7 +216,7 @@ function App() {
   usePolling(handleFetchSessions, POLL_INTERVAL_MS)
 
   async function handleSaveConfig(): Promise<void> {
-    await window.api.saveConfig({ siteUrl, email, apiToken })
+    await window.api.saveConfig({ siteUrl, email, apiToken, defaultProjectPath })
     setConfigured(true)
     setShowSettings(false)
     handleFetch()
@@ -215,7 +227,7 @@ function App() {
   }
 
   function handleOpenSession(session: ClaudeSession): void {
-    const alreadyOpen = openSessions.some((s) => s.sessionId === session.sessionId)
+    const alreadyOpen = openTabs.some((t) => t.tabId === session.sessionId)
     if (!alreadyOpen) {
       if (
         isRecentlyActive(session.lastActive) &&
@@ -226,15 +238,64 @@ function App() {
       ) {
         return
       }
-      setOpenSessions((prev) => [...prev, session])
+      setOpenTabs((prev) => [...prev, { tabId: session.sessionId, session, kind: 'resume' }])
     }
     setActiveTabId(session.sessionId)
   }
 
-  function handleCloseTab(sessionId: string): void {
-    setOpenSessions((prev) => prev.filter((s) => s.sessionId !== sessionId))
-    if (activeTabId === sessionId) {
+  function handleCloseTab(tabId: string): void {
+    setOpenTabs((prev) => prev.filter((t) => t.tabId !== tabId))
+    if (activeTabId === tabId) {
       setActiveTabId(TICKETS_TAB)
+    }
+  }
+
+  function makeSessionStub(sessionId: string, title: string, lastActive?: string): ClaudeSession {
+    return {
+      sessionId,
+      projectPath: defaultProjectPath,
+      title,
+      lastActive: lastActive ?? new Date().toISOString(),
+      preview: ''
+    }
+  }
+
+  function resolveSessionObject(sessionId: string): ClaudeSession {
+    return (
+      claudeSessions.find((s) => s.sessionId === sessionId) ??
+      openTabs.find((t) => t.tabId === sessionId)?.session ??
+      makeSessionStub(sessionId, sessionId, new Date(0).toISOString())
+    )
+  }
+
+  function handleStartNewSessionForTicket(issueKey: string, issueSummary: string): void {
+    if (!defaultProjectPath) {
+      window.alert('설정에서 "기본 프로젝트 경로"를 먼저 지정해주세요.')
+      setShowSettings(true)
+      return
+    }
+    const tabId = `new-${crypto.randomUUID()}`
+    const stub = makeSessionStub(tabId, `${issueKey} ${issueSummary}`)
+    setOpenTabs((prev) => [...prev, { tabId, session: stub, kind: 'new', ticketKey: issueKey }])
+    setActiveTabId(tabId)
+  }
+
+  function handleNewSessionCreated(
+    tabId: string,
+    ticketKey: string | undefined,
+    sessionId: string
+  ): void {
+    setOpenTabs((prev) =>
+      prev.map((t) => (t.tabId === tabId ? { ...t, session: { ...t.session, sessionId } } : t))
+    )
+    const tab = openTabs.find((t) => t.tabId === tabId)
+    if (tab) {
+      setClaudeSessions((prev) => [{ ...tab.session, sessionId }, ...prev])
+    }
+    if (ticketKey) {
+      const next = { ...ticketSessions, [ticketKey]: sessionId }
+      setTicketSessions(next)
+      window.api.saveTicketSessions(next)
     }
   }
 
@@ -246,12 +307,16 @@ function App() {
   async function commitRename(session: ClaudeSession): Promise<void> {
     setRenamingSessionId(null)
     const nextTitle = renameDraft.trim()
-    if (!nextTitle || nextTitle === session.title) return
+    if (!nextTitle || nextTitle === session.title || session.sessionId.startsWith('new-')) return
     await window.api.renameClaudeSession(session.sessionId, nextTitle)
     const applyRename = (s: ClaudeSession): ClaudeSession =>
       s.sessionId === session.sessionId ? { ...s, title: nextTitle } : s
     setClaudeSessions((prev) => prev.map(applyRename))
-    setOpenSessions((prev) => prev.map(applyRename))
+    setOpenTabs((prev) =>
+      prev.map((t) =>
+        t.tabId === session.sessionId ? { ...t, session: applyRename(t.session) } : t
+      )
+    )
   }
 
   const commentsByIssueKey = useMemo(
@@ -360,11 +425,11 @@ function App() {
             >
               내 담당 티켓
             </div>
-            {openSessions.map((session) => (
+            {openTabs.map(({ tabId, session }) => (
               <div
-                key={session.sessionId}
-                className={`main-tab ${session.sessionId === activeTabId ? 'main-tab-active' : ''}`}
-                onClick={() => setActiveTabId(session.sessionId)}
+                key={tabId}
+                className={`main-tab ${tabId === activeTabId ? 'main-tab-active' : ''}`}
+                onClick={() => setActiveTabId(tabId)}
                 title="더블클릭하면 제목 변경"
               >
                 {renamingSessionId === session.sessionId ? (
@@ -395,7 +460,7 @@ function App() {
                   className="chat-tab-close"
                   onClick={(e) => {
                     e.stopPropagation()
-                    handleCloseTab(session.sessionId)
+                    handleCloseTab(tabId)
                   }}
                 >
                   ✕
@@ -430,6 +495,12 @@ function App() {
                     type="password"
                     value={apiToken}
                     onChange={(e) => setApiToken(e.target.value)}
+                  />
+                  <input
+                    className="field"
+                    placeholder="기본 프로젝트 경로 (예: /Users/me/dev/my-repo) — 티켓 '새로하기'에 사용"
+                    value={defaultProjectPath}
+                    onChange={(e) => setDefaultProjectPath(e.target.value)}
                   />
                   <button className="btn-primary" onClick={handleSaveConfig}>
                     저장하고 불러오기
@@ -504,10 +575,11 @@ function App() {
                     {items.map((issue) => {
                       const comment = commentsByIssueKey.get(issue.key)
                       const displayOrder = items.map((i) => i.key)
+                      const dueDateClass = getDueDateClass(issue.dueDate)
                       return (
                         <li
                           key={issue.key}
-                          className={`issue-item ${dragOverKey === issue.key ? 'issue-item-drag-over' : ''}`}
+                          className={`issue-item issue-item-${dueDateClass} ${dragOverKey === issue.key ? 'issue-item-drag-over' : ''}`}
                           onDragOver={(e) => {
                             e.preventDefault()
                             setDragOverKey(issue.key)
@@ -547,17 +619,6 @@ function App() {
                               </a>{' '}
                               <span className="issue-summary">{issue.summary}</span>
                             </div>
-                            {issue.dueDate && (
-                              <span className={`due-date ${getDueDateClass(issue.dueDate)}`}>
-                                {issue.dueDate}
-                              </span>
-                            )}
-                            <button
-                              className="archive-btn"
-                              onClick={() => toggleArchive(issue.key)}
-                            >
-                              {viewMode === 'archived' ? '꺼내기' : '보관'}
-                            </button>
                           </div>
                           {comment && (
                             <div className="issue-comment">
@@ -565,6 +626,50 @@ function App() {
                               <span className="meta"> · {formatRelativeTime(comment.created)}</span>
                             </div>
                           )}
+                          <div className="issue-actions">
+                            {issue.dueDate ? (
+                              <span className={`due-date due-date-${dueDateClass}`}>
+                                {issue.dueDate}
+                              </span>
+                            ) : (
+                              <span />
+                            )}
+                            <div className="issue-actions-buttons">
+                              <button
+                                className="archive-btn"
+                                onClick={() => toggleArchive(issue.key)}
+                              >
+                                {viewMode === 'archived' ? '꺼내기' : '보관'}
+                              </button>
+                              {ticketSessions[issue.key] ? (
+                                <button
+                                  className="btn-ghost issue-action-btn"
+                                  onClick={() =>
+                                    handleOpenSession(
+                                      resolveSessionObject(ticketSessions[issue.key])
+                                    )
+                                  }
+                                >
+                                  이어하기
+                                </button>
+                              ) : (
+                                <button
+                                  className="btn-ghost issue-action-btn"
+                                  onClick={() =>
+                                    handleStartNewSessionForTicket(issue.key, issue.summary)
+                                  }
+                                  disabled={!defaultProjectPath}
+                                  title={
+                                    defaultProjectPath
+                                      ? undefined
+                                      : '설정에서 기본 프로젝트 경로를 먼저 지정하세요'
+                                  }
+                                >
+                                  새로하기
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </li>
                       )
                     })}
@@ -574,13 +679,24 @@ function App() {
             </section>
           </div>
 
-          {openSessions.map((session) => (
+          {openTabs.map((tab) => (
             <div
-              key={session.sessionId}
+              key={tab.tabId}
               className="chat-tab-panel"
-              style={{ display: session.sessionId === activeTabId ? 'flex' : 'none' }}
+              style={{ display: tab.tabId === activeTabId ? 'flex' : 'none' }}
             >
-              <ChatPanel sessionId={session.sessionId} />
+              <ChatPanel
+                tabId={tab.tabId}
+                mode={
+                  tab.kind === 'new'
+                    ? {
+                        type: 'new',
+                        onSessionCreated: (sessionId) =>
+                          handleNewSessionCreated(tab.tabId, tab.ticketKey, sessionId)
+                      }
+                    : { type: 'resume', sessionId: tab.session.sessionId }
+                }
+              />
             </div>
           ))}
         </main>

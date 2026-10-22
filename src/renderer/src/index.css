@@ -10,6 +10,7 @@
   --danger: #c0271a;
   --danger-bg: #fdecec;
   --warning: #b45309;
+  --warning-bg: #fdf1e0;
   --radius: 12px;
   --shadow: 0 1px 2px rgba(16, 20, 30, 0.04), 0 8px 20px -6px rgba(16, 20, 30, 0.08);
 }
@@ -25,6 +26,7 @@
     --accent-soft: #272a3d;
     --accent-contrast: #121318;
     --danger-bg: #3a1d1d;
+    --warning-bg: #3a2c12;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -6px rgba(0, 0, 0, 0.45);
   }
 }
@@ -352,15 +354,22 @@ body,
 }
 
 .issue-item {
-  padding: 12px 0;
+  padding: 12px 0 12px 10px;
   border-bottom: 1px solid var(--border);
   border-top: 2px solid transparent;
+  border-left: 3px solid transparent;
 }
 .issue-item:last-child {
   border-bottom: none;
 }
 .issue-item-drag-over {
   border-top-color: var(--accent);
+}
+.issue-item-overdue {
+  border-left-color: var(--danger);
+}
+.issue-item-soon {
+  border-left-color: var(--warning);
 }
 
 .issue-row {
@@ -375,6 +384,11 @@ body,
   color: var(--text-muted);
   font-size: 14px;
   padding: 0 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.issue-item:hover .drag-handle {
+  opacity: 1;
 }
 .drag-handle:active {
   cursor: grabbing;
@@ -383,21 +397,17 @@ body,
 .archive-btn {
   flex-shrink: 0;
   white-space: nowrap;
-  border: none;
+  border: 1px solid var(--border);
   background: transparent;
   color: var(--text-muted);
-  font-size: 12.5px;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 0 2px;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-.issue-item:hover .archive-btn,
-.archive-btn:focus-visible {
-  opacity: 1;
 }
 .archive-btn:hover {
+  background: var(--border);
   color: var(--text);
 }
 
@@ -421,6 +431,26 @@ body,
   color: var(--text);
 }
 
+.issue-actions {
+  margin-top: 8px;
+  margin-left: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.issue-actions-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.issue-action-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
 .issue-key {
   color: var(--accent);
   text-decoration: none;
@@ -438,19 +468,24 @@ body,
 }
 
 .due-date {
-  font-size: 12.5px;
+  font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
+  padding: 3px 9px;
+  border-radius: 999px;
 }
-.due-date.overdue {
+.due-date-overdue {
   color: var(--danger);
-  font-weight: 600;
+  background: var(--danger-bg);
 }
-.due-date.soon {
+.due-date-soon {
   color: var(--warning);
-  font-weight: 600;
+  background: var(--warning-bg);
 }
-.due-date.normal {
+.due-date-normal {
   color: var(--text-muted);
+  background: var(--bg);
+  font-weight: 400;
 }
 
 .session-list {

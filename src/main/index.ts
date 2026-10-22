@@ -5,6 +5,7 @@ import { fetchMyIssues, fetchRecentComments, type JiraIssue } from './jira'
 import { listClaudeSessions, renameClaudeSession } from './claudeSessions'
 import { loadPriorityOrder, savePriorityOrder, type PriorityMap } from './priorities'
 import { loadArchivedKeys, saveArchivedKeys, type ArchivedKeys } from './archive'
+import { loadTicketSessions, saveTicketSessions, type TicketSessionMap } from './ticketSessions'
 import { registerChatHandlers } from './chat'
 
 const iconPath = join(__dirname, '../../resources/icon.png')
@@ -82,6 +83,12 @@ app.whenReady().then(() => {
 
   ipcMain.handle('archive:save', (_event, keys: ArchivedKeys) => {
     saveArchivedKeys(keys)
+  })
+
+  ipcMain.handle('ticketSession:get', () => loadTicketSessions())
+
+  ipcMain.handle('ticketSession:save', (_event, map: TicketSessionMap) => {
+    saveTicketSessions(map)
   })
 
   const mainWindow = createWindow()

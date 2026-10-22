@@ -13,42 +13,31 @@ interface PendingPermission {
   input: Record<string, unknown>
 }
 
+type ChatPanelMode =
+  | { type: 'resume'; sessionId: string }
+  | { type: 'new'; onSessionCreated: (sessionId: string) => void }
+
 interface ChatPanelProps {
-  sessionId: string
+  tabId: string
+  mode: ChatPanelMode
 }
 
-function ChatPanel({ sessionId }: ChatPanelProps) {
+function ChatPanel({ tabId, mode }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [loadingHistory, setLoadingHistory] = useState(true)
+  const [loadingHistory, setLoadingHistory] = useState(mode.type === 'resume')
   const [input, setInput] = useState('')
   const [pendingPermission, setPendingPermission] = useState<PendingPermission | null>(null)
   const [busy, setBusy] = useState(false)
   const chatIdRef = useRef<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const initialModeRef = useRef(mode)
 
   useEffect(() => {
+    const initialMode = initialModeRef.current
     let disposed = false
     let cleanup = (): void => {}
 
-    window.api.chat.getHistory(sessionId).then((history) => {
-      if (disposed) return
-      const historyMessages: ChatMessage[] = history.map((entry) => ({
-        id: crypto.randomUUID(),
-        role: entry.role,
-        text: entry.text
-      }))
-      if (historyMessages.length > 0) {
-        historyMessages.push({
-          id: crypto.randomUUID(),
-          role: 'system',
-          text: '— 여기까지 이전 대화 —'
-        })
-      }
-      setMessages(historyMessages)
-      setLoadingHistory(false)
-    })
-
-    window.api.chat.start(sessionId).then((chatId) => {
+    function attach(chatId: string): void {
       if (disposed) {
         window.api.chat.dispose(chatId)
         return
@@ -72,16 +61,42 @@ function ChatPanel({ sessionId }: ChatPanelProps) {
             { id: crypto.randomUUID(), role: 'system', text: `오류: ${event.message}` }
           ])
           setBusy(false)
+        } else if (event.type === 'session-id' && initialMode.type === 'new') {
+          initialMode.onSessionCreated(event.sessionId)
         }
       })
-    })
+    }
+
+    if (initialMode.type === 'resume') {
+      window.api.chat.getHistory(initialMode.sessionId).then((history) => {
+        if (disposed) return
+        const historyMessages: ChatMessage[] = history.map((entry) => ({
+          id: crypto.randomUUID(),
+          role: entry.role,
+          text: entry.text
+        }))
+        if (historyMessages.length > 0) {
+          historyMessages.push({
+            id: crypto.randomUUID(),
+            role: 'system',
+            text: '— 여기까지 이전 대화 —'
+          })
+        }
+        setMessages(historyMessages)
+        setLoadingHistory(false)
+      })
+
+      window.api.chat.start(initialMode.sessionId).then(attach)
+    } else {
+      window.api.chat.startNew().then(attach)
+    }
 
     return () => {
       disposed = true
       cleanup()
       if (chatIdRef.current) window.api.chat.dispose(chatIdRef.current)
     }
-  }, [sessionId])
+  }, [tabId])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })

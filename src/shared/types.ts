@@ -2,6 +2,7 @@ export interface JiraConfig {
   siteUrl: string
   email: string
   apiToken: string
+  defaultProjectPath?: string
 }
 
 export interface JiraIssue {
@@ -34,6 +35,8 @@ export type PriorityMap = Record<string, string[]>
 
 export type ArchivedKeys = string[]
 
+export type TicketSessionMap = Record<string, string>
+
 export interface ChatHistoryEntry {
   role: 'user' | 'assistant' | 'tool'
   text: string
@@ -45,3 +48,4 @@ export type ChatEvent =
   | { type: 'permission-request'; id: string; toolName: string; input: Record<string, unknown> }
   | { type: 'turn-complete' }
   | { type: 'error'; message: string }
+  | { type: 'session-id'; sessionId: string }

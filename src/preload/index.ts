@@ -7,7 +7,8 @@ import type {
   ChatEvent,
   ChatHistoryEntry,
   PriorityMap,
-  ArchivedKeys
+  ArchivedKeys,
+  TicketSessionMap
 } from '../shared/types'
 
 export type {
@@ -18,7 +19,8 @@ export type {
   ChatEvent,
   ChatHistoryEntry,
   PriorityMap,
-  ArchivedKeys
+  ArchivedKeys,
+  TicketSessionMap
 }
 
 function subscribe<Args extends unknown[]>(
@@ -50,10 +52,14 @@ const api = {
     ipcRenderer.invoke('priority:save', order),
   getArchivedKeys: (): Promise<ArchivedKeys> => ipcRenderer.invoke('archive:get'),
   saveArchivedKeys: (keys: ArchivedKeys): Promise<void> => ipcRenderer.invoke('archive:save', keys),
+  getTicketSessions: (): Promise<TicketSessionMap> => ipcRenderer.invoke('ticketSession:get'),
+  saveTicketSessions: (map: TicketSessionMap): Promise<void> =>
+    ipcRenderer.invoke('ticketSession:save', map),
   chat: {
     getHistory: (sessionId: string): Promise<ChatHistoryEntry[]> =>
       ipcRenderer.invoke('chat:getHistory', sessionId),
     start: (sessionId: string): Promise<string> => ipcRenderer.invoke('chat:start', sessionId),
+    startNew: (): Promise<string> => ipcRenderer.invoke('chat:startNew'),
     send: (chatId: string, text: string): void => {
       ipcRenderer.send('chat:send', chatId, text)
     },

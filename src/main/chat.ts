@@ -7,6 +7,7 @@ import {
   type PermissionResult
 } from '@anthropic-ai/claude-agent-sdk'
 import { resolveSessionCwd, getChatHistory } from './claudeSessions'
+import { loadConfig } from './store'
 import type { ChatEvent } from '../shared/types'
 
 function emit(mainWindow: BrowserWindow, chatId: string, event: ChatEvent): void {
@@ -64,6 +65,54 @@ interface ChatSession {
 
 const chats = new Map<string, ChatSession>()
 
+function startQuery(mainWindow: BrowserWindow, cwd: string, resume?: string): string {
+  const chatId = randomUUID()
+  const channel = createInputChannel()
+  const pending = new Map<string, PendingPermission>()
+
+  const canUseTool: CanUseTool = (toolName, input) => {
+    return new Promise<PermissionResult>((resolve) => {
+      const requestId = randomUUID()
+      pending.set(requestId, { resolve, input })
+      emit(mainWindow, chatId, { type: 'permission-request', id: requestId, toolName, input })
+    })
+  }
+
+  const activeQuery = query({
+    prompt: channel.iterable,
+    options: { resume, cwd, canUseTool, permissionMode: 'default' }
+  })
+
+  chats.set(chatId, { channel, pending, close: () => activeQuery.close() })
+  ;(async () => {
+    try {
+      for await (const message of activeQuery) {
+        if ('session_id' in message && message.session_id) {
+          emit(mainWindow, chatId, { type: 'session-id', sessionId: message.session_id })
+        }
+        if (message.type === 'assistant') {
+          for (const block of message.message.content) {
+            if (block.type === 'text') {
+              emit(mainWindow, chatId, { type: 'assistant-text', text: block.text })
+            } else if (block.type === 'tool_use') {
+              emit(mainWindow, chatId, { type: 'tool-use', id: block.id, name: block.name })
+            }
+          }
+        } else if (message.type === 'result') {
+          emit(mainWindow, chatId, { type: 'turn-complete' })
+        }
+      }
+    } catch (error) {
+      emit(mainWindow, chatId, {
+        type: 'error',
+        message: error instanceof Error ? error.message : String(error)
+      })
+    }
+  })()
+
+  return chatId
+}
+
 export function registerChatHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle('chat:getHistory', (_event, sessionId: string) => getChatHistory(sessionId))
 
@@ -72,49 +121,15 @@ export function registerChatHandlers(mainWindow: BrowserWindow): void {
     if (!cwd) {
       throw new Error('세션을 찾을 수 없습니다.')
     }
+    return startQuery(mainWindow, cwd, sessionId)
+  })
 
-    const chatId = randomUUID()
-    const channel = createInputChannel()
-    const pending = new Map<string, PendingPermission>()
-
-    const canUseTool: CanUseTool = (toolName, input) => {
-      return new Promise<PermissionResult>((resolve) => {
-        const requestId = randomUUID()
-        pending.set(requestId, { resolve, input })
-        emit(mainWindow, chatId, { type: 'permission-request', id: requestId, toolName, input })
-      })
+  ipcMain.handle('chat:startNew', () => {
+    const cwd = loadConfig().defaultProjectPath
+    if (!cwd) {
+      throw new Error('기본 프로젝트 경로가 설정되지 않았습니다.')
     }
-
-    const activeQuery = query({
-      prompt: channel.iterable,
-      options: { resume: sessionId, cwd, canUseTool, permissionMode: 'default' }
-    })
-
-    chats.set(chatId, { channel, pending, close: () => activeQuery.close() })
-    ;(async () => {
-      try {
-        for await (const message of activeQuery) {
-          if (message.type === 'assistant') {
-            for (const block of message.message.content) {
-              if (block.type === 'text') {
-                emit(mainWindow, chatId, { type: 'assistant-text', text: block.text })
-              } else if (block.type === 'tool_use') {
-                emit(mainWindow, chatId, { type: 'tool-use', id: block.id, name: block.name })
-              }
-            }
-          } else if (message.type === 'result') {
-            emit(mainWindow, chatId, { type: 'turn-complete' })
-          }
-        }
-      } catch (error) {
-        emit(mainWindow, chatId, {
-          type: 'error',
-          message: error instanceof Error ? error.message : String(error)
-        })
-      }
-    })()
-
-    return chatId
+    return startQuery(mainWindow, cwd)
   })
 
   ipcMain.on('chat:send', (_event, chatId: string, text: string) => {
