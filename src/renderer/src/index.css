@@ -1,27 +1,31 @@
 :root {
-  --bg: #f5f6f8;
+  --bg: #f3f4f7;
   --surface: #ffffff;
-  --border: #e3e6ea;
-  --text: #1a1d23;
-  --text-muted: #6b7280;
-  --accent: #4f46e5;
+  --border: #e1e3e9;
+  --text: #15171f;
+  --text-muted: #565e6c;
+  --accent: #4338ca;
+  --accent-soft: #eef0fd;
   --accent-contrast: #ffffff;
-  --danger: #dc2626;
+  --danger: #c0271a;
   --danger-bg: #fdecec;
-  --warning: #d97706;
-  --radius: 10px;
+  --warning: #b45309;
+  --radius: 12px;
+  --shadow: 0 1px 2px rgba(16, 20, 30, 0.04), 0 8px 20px -6px rgba(16, 20, 30, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #15171c;
-    --surface: #1e2129;
-    --border: #2d3139;
-    --text: #e5e7eb;
-    --text-muted: #9ca3af;
-    --accent: #818cf8;
-    --accent-contrast: #15171c;
+    --bg: #121318;
+    --surface: #1c1e26;
+    --border: #2d313c;
+    --text: #edeef2;
+    --text-muted: #a3aab8;
+    --accent: #9b95f5;
+    --accent-soft: #272a3d;
+    --accent-contrast: #121318;
     --danger-bg: #3a1d1d;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -6px rgba(0, 0, 0, 0.45);
   }
 }
 
@@ -34,6 +38,9 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
 
 html,
@@ -104,7 +111,8 @@ body,
 .main-tab-active {
   background: var(--surface);
   color: var(--text);
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: 0 -2px 0 var(--accent) inset;
 }
 
 .chat-tab-title {
@@ -139,10 +147,21 @@ body,
 }
 
 .header h1 {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 21px;
+  font-weight: 800;
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.header h1::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--accent);
 }
 
 .icon-button {
@@ -156,27 +175,31 @@ body,
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
 }
 .icon-button:hover {
   background: var(--border);
+  transform: rotate(20deg);
 }
 
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
+  box-shadow: var(--shadow);
+  padding: 22px;
   margin-bottom: 20px;
 }
 
 .card h2 {
-  font-size: 13px;
-  font-weight: 600;
-  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0 0 14px;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 }
 
 .field {
@@ -253,7 +276,7 @@ body,
 }
 
 .meta {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--text-muted);
 }
 
@@ -267,14 +290,14 @@ body,
 .status-badge {
   display: inline-flex;
   align-items: center;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 3px 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 4px 11px;
   border-radius: 999px;
-  background: var(--bg);
+  background: var(--accent-soft);
   border: 1px solid var(--border);
-  color: var(--text-muted);
-  margin-bottom: 8px;
+  color: var(--accent);
+  margin-bottom: 10px;
 }
 
 .status-summary {
@@ -300,7 +323,7 @@ body,
 }
 
 .issue-item {
-  padding: 10px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--border);
 }
 .issue-item:last-child {
@@ -315,13 +338,14 @@ body,
 }
 
 .issue-comment {
-  margin-top: 6px;
+  margin-top: 8px;
   margin-left: 4px;
-  padding: 8px 10px;
-  border-left: 2px solid var(--border);
+  padding: 9px 12px;
+  border-left: 2px solid var(--accent);
   background: var(--bg);
   border-radius: 0 6px 6px 0;
-  font-size: 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
   color: var(--text-muted);
 }
 .issue-comment strong {
@@ -341,10 +365,11 @@ body,
 .issue-summary {
   flex: 1;
   font-size: 14px;
+  line-height: 1.5;
 }
 
 .due-date {
-  font-size: 12px;
+  font-size: 12.5px;
   white-space: nowrap;
 }
 .due-date.overdue {
@@ -366,7 +391,7 @@ body,
 }
 
 .session-item {
-  padding: 10px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--border);
 }
 .session-item:last-child {
@@ -374,8 +399,8 @@ body,
 }
 
 .session-title {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--accent);
   white-space: nowrap;
   overflow: hidden;
@@ -384,7 +409,9 @@ body,
 
 .session-preview {
   font-size: 13px;
-  margin: 4px 0 6px;
+  line-height: 1.5;
+  margin: 5px 0 8px;
+  color: var(--text-muted);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -421,6 +448,7 @@ body,
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -457,13 +485,13 @@ body,
   align-self: flex-start;
   background: transparent;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 12.5px;
   padding: 2px 4px;
 }
 .chat-bubble-system {
   align-self: center;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 .chat-permission {
