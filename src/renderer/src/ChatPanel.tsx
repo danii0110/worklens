@@ -15,7 +15,7 @@ interface PendingPermission {
 
 type ChatPanelMode =
   | { type: 'resume'; sessionId: string }
-  | { type: 'new'; onSessionCreated: (sessionId: string) => void }
+  | { type: 'new'; subdir?: string; onSessionCreated: (sessionId: string) => void }
 
 interface ChatPanelProps {
   tabId: string
@@ -88,7 +88,7 @@ function ChatPanel({ tabId, mode }: ChatPanelProps) {
 
       window.api.chat.start(initialMode.sessionId).then(attach)
     } else {
-      window.api.chat.startNew().then(attach)
+      window.api.chat.startNew(initialMode.subdir).then(attach)
     }
 
     return () => {
@@ -117,9 +117,14 @@ function ChatPanel({ tabId, mode }: ChatPanelProps) {
     setPendingPermission(null)
   }
 
+  function handleSelectionCopy(): void {
+    const selected = window.getSelection()?.toString()
+    if (selected) navigator.clipboard.writeText(selected)
+  }
+
   return (
     <div className="chat-panel">
-      <div ref={scrollRef} className="chat-messages">
+      <div ref={scrollRef} className="chat-messages" onMouseUp={handleSelectionCopy}>
         {loadingHistory && (
           <div className="chat-bubble chat-bubble-system">이전 대화 불러오는 중...</div>
         )}

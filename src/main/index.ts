@@ -6,6 +6,7 @@ import { listClaudeSessions, renameClaudeSession } from './claudeSessions'
 import { loadPriorityOrder, savePriorityOrder, type PriorityMap } from './priorities'
 import { loadArchivedKeys, saveArchivedKeys, type ArchivedKeys } from './archive'
 import { loadTicketSessions, saveTicketSessions, type TicketSessionMap } from './ticketSessions'
+import { listProjectSubdirs } from './projectDirs'
 import { registerChatHandlers } from './chat'
 
 const iconPath = join(__dirname, '../../resources/icon.png')
@@ -89,6 +90,11 @@ app.whenReady().then(() => {
 
   ipcMain.handle('ticketSession:save', (_event, map: TicketSessionMap) => {
     saveTicketSessions(map)
+  })
+
+  ipcMain.handle('project:listSubdirs', () => {
+    const basePath = loadConfig().defaultProjectPath
+    return basePath ? listProjectSubdirs(basePath) : []
   })
 
   const mainWindow = createWindow()

@@ -18,6 +18,7 @@ interface OpenTab {
   session: ClaudeSession
   kind: 'new' | 'resume'
   ticketKey?: string
+  subdir?: string
 }
 
 // Explicit order for known statuses; anything else falls back to its Jira
@@ -117,12 +118,14 @@ function App() {
   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [ticketSessions, setTicketSessions] = useState<TicketSessionMap>({})
+  const [projectSubdirs, setProjectSubdirs] = useState<string[]>([])
   const seenCommentKeysRef = useRef<Set<string> | null>(null)
 
   useEffect(() => {
     window.api.getPriorityOrder().then(setPriorityMap)
     window.api.getArchivedKeys().then(setArchivedKeys)
     window.api.getTicketSessions().then(setTicketSessions)
+    window.api.listProjectSubdirs().then(setProjectSubdirs)
   }, [])
 
   function selectViewMode(mode: 'active' | 'archived'): void {
@@ -220,6 +223,7 @@ function App() {
     setConfigured(true)
     setShowSettings(false)
     handleFetch()
+    window.api.listProjectSubdirs().then(setProjectSubdirs)
   }
 
   function openExternal(url: string): void {
@@ -268,15 +272,23 @@ function App() {
     )
   }
 
-  function handleStartNewSessionForTicket(issueKey: string, issueSummary: string): void {
+  function handleStartNewSessionForTicket(
+    issueKey: string,
+    issueSummary: string,
+    subdir?: string
+  ): void {
     if (!defaultProjectPath) {
       window.alert('설정에서 "기본 프로젝트 경로"를 먼저 지정해주세요.')
       setShowSettings(true)
       return
     }
     const tabId = `new-${crypto.randomUUID()}`
-    const stub = makeSessionStub(tabId, `${issueKey} ${issueSummary}`)
-    setOpenTabs((prev) => [...prev, { tabId, session: stub, kind: 'new', ticketKey: issueKey }])
+    const title = subdir ? `${issueKey} (${subdir})` : `${issueKey} ${issueSummary}`
+    const stub = makeSessionStub(tabId, title)
+    setOpenTabs((prev) => [
+      ...prev,
+      { tabId, session: stub, kind: 'new', ticketKey: issueKey, subdir }
+    ])
     setActiveTabId(tabId)
   }
 
@@ -627,48 +639,63 @@ function App() {
                             </div>
                           )}
                           <div className="issue-actions">
-                            {issue.dueDate ? (
+                            {ticketSessions[issue.key] ? (
+                              <button
+                                className="btn-ghost issue-action-btn"
+                                onClick={() =>
+                                  handleOpenSession(resolveSessionObject(ticketSessions[issue.key]))
+                                }
+                              >
+                                이어하기
+                              </button>
+                            ) : (
+                              <button
+                                className="btn-ghost issue-action-btn"
+                                onClick={() =>
+                                  handleStartNewSessionForTicket(issue.key, issue.summary)
+                                }
+                                disabled={!defaultProjectPath}
+                                title={
+                                  defaultProjectPath
+                                    ? undefined
+                                    : '설정에서 기본 프로젝트 경로를 먼저 지정하세요'
+                                }
+                              >
+                                새로하기
+                              </button>
+                            )}
+                            {!ticketSessions[issue.key] && projectSubdirs.length > 0 && (
+                              <select
+                                className="field subdir-select"
+                                value=""
+                                onChange={(e) => {
+                                  const subdir = e.target.value
+                                  if (subdir) {
+                                    handleStartNewSessionForTicket(issue.key, issue.summary, subdir)
+                                  }
+                                }}
+                              >
+                                <option value="" disabled>
+                                  하위 폴더 선택
+                                </option>
+                                {projectSubdirs.map((dir) => (
+                                  <option key={dir} value={dir}>
+                                    {dir}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                            <button
+                              className="archive-btn"
+                              onClick={() => toggleArchive(issue.key)}
+                            >
+                              {viewMode === 'archived' ? '꺼내기' : '보관'}
+                            </button>
+                            {issue.dueDate && (
                               <span className={`due-date due-date-${dueDateClass}`}>
                                 {issue.dueDate}
                               </span>
-                            ) : (
-                              <span />
                             )}
-                            <div className="issue-actions-buttons">
-                              <button
-                                className="archive-btn"
-                                onClick={() => toggleArchive(issue.key)}
-                              >
-                                {viewMode === 'archived' ? '꺼내기' : '보관'}
-                              </button>
-                              {ticketSessions[issue.key] ? (
-                                <button
-                                  className="btn-ghost issue-action-btn"
-                                  onClick={() =>
-                                    handleOpenSession(
-                                      resolveSessionObject(ticketSessions[issue.key])
-                                    )
-                                  }
-                                >
-                                  이어하기
-                                </button>
-                              ) : (
-                                <button
-                                  className="btn-ghost issue-action-btn"
-                                  onClick={() =>
-                                    handleStartNewSessionForTicket(issue.key, issue.summary)
-                                  }
-                                  disabled={!defaultProjectPath}
-                                  title={
-                                    defaultProjectPath
-                                      ? undefined
-                                      : '설정에서 기본 프로젝트 경로를 먼저 지정하세요'
-                                  }
-                                >
-                                  새로하기
-                                </button>
-                              )}
-                            </div>
                           </div>
                         </li>
                       )
@@ -691,6 +718,7 @@ function App() {
                   tab.kind === 'new'
                     ? {
                         type: 'new',
+                        subdir: tab.subdir,
                         onSessionCreated: (sessionId) =>
                           handleNewSessionCreated(tab.tabId, tab.ticketKey, sessionId)
                       }

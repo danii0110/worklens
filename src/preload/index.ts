@@ -55,11 +55,12 @@ const api = {
   getTicketSessions: (): Promise<TicketSessionMap> => ipcRenderer.invoke('ticketSession:get'),
   saveTicketSessions: (map: TicketSessionMap): Promise<void> =>
     ipcRenderer.invoke('ticketSession:save', map),
+  listProjectSubdirs: (): Promise<string[]> => ipcRenderer.invoke('project:listSubdirs'),
   chat: {
     getHistory: (sessionId: string): Promise<ChatHistoryEntry[]> =>
       ipcRenderer.invoke('chat:getHistory', sessionId),
     start: (sessionId: string): Promise<string> => ipcRenderer.invoke('chat:start', sessionId),
-    startNew: (): Promise<string> => ipcRenderer.invoke('chat:startNew'),
+    startNew: (subdir?: string): Promise<string> => ipcRenderer.invoke('chat:startNew', subdir),
     send: (chatId: string, text: string): void => {
       ipcRenderer.send('chat:send', chatId, text)
     },

@@ -8,6 +8,7 @@ import {
 } from '@anthropic-ai/claude-agent-sdk'
 import { resolveSessionCwd, getChatHistory } from './claudeSessions'
 import { loadConfig } from './store'
+import { resolveSubdirPath } from './projectDirs'
 import type { ChatEvent } from '../shared/types'
 
 function emit(mainWindow: BrowserWindow, chatId: string, event: ChatEvent): void {
@@ -124,10 +125,17 @@ export function registerChatHandlers(mainWindow: BrowserWindow): void {
     return startQuery(mainWindow, cwd, sessionId)
   })
 
-  ipcMain.handle('chat:startNew', () => {
-    const cwd = loadConfig().defaultProjectPath
-    if (!cwd) {
+  ipcMain.handle('chat:startNew', (_event, subdir?: string) => {
+    const basePath = loadConfig().defaultProjectPath
+    if (!basePath) {
       throw new Error('기본 프로젝트 경로가 설정되지 않았습니다.')
+    }
+    if (!subdir) {
+      return startQuery(mainWindow, basePath)
+    }
+    const cwd = resolveSubdirPath(basePath, subdir)
+    if (!cwd) {
+      throw new Error('하위 프로젝트 폴더를 찾을 수 없습니다.')
     }
     return startQuery(mainWindow, cwd)
   })
