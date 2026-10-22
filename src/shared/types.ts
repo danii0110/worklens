@@ -25,6 +25,7 @@ export interface RecentComment {
 export interface ClaudeSession {
   sessionId: string
   projectPath: string
+  title: string
   lastActive: string
   preview: string
 }

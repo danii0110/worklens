@@ -16,10 +16,6 @@ type ClaudeSession = Awaited<ReturnType<typeof window.api.listClaudeSessions>>[n
 const STATUS_ORDER = ['진행 중', '개발완료', '미해결']
 const CATEGORY_RANK: Record<string, number> = { indeterminate: 0, new: 1, done: 2 }
 
-function projectBasename(projectPath: string): string {
-  return projectPath.split('/').pop() ?? projectPath
-}
-
 function statusRank(status: string, items: JiraIssue[]): number {
   const explicitRank = STATUS_ORDER.indexOf(status)
   if (explicitRank !== -1) return explicitRank
@@ -145,6 +141,16 @@ function App() {
     }
   }
 
+  async function handleRenameSession(session: ClaudeSession): Promise<void> {
+    const nextTitle = window.prompt('채팅 제목을 입력하세요', session.title)
+    if (!nextTitle || nextTitle === session.title) return
+    await window.api.renameClaudeSession(session.sessionId, nextTitle)
+    const applyRename = (s: ClaudeSession): ClaudeSession =>
+      s.sessionId === session.sessionId ? { ...s, title: nextTitle } : s
+    setClaudeSessions((prev) => prev.map(applyRename))
+    setOpenSessions((prev) => prev.map(applyRename))
+  }
+
   const commentsByIssueKey = useMemo(
     () => new Map(comments.map((comment) => [comment.issueKey, comment])),
     [comments]
@@ -176,8 +182,12 @@ function App() {
             <ul className="session-list">
               {claudeSessions.map((session) => (
                 <li key={session.sessionId} className="session-item">
-                  <div className="session-title" title={session.projectPath}>
-                    {projectBasename(session.projectPath)}
+                  <div
+                    className="session-title"
+                    title={`${session.projectPath}\n더블클릭하면 제목 변경`}
+                    onDoubleClick={() => handleRenameSession(session)}
+                  >
+                    {session.title}
                   </div>
                   <div className="session-preview">{session.preview}</div>
                   <div className="session-footer">
@@ -209,8 +219,10 @@ function App() {
                 key={session.sessionId}
                 className={`main-tab ${session.sessionId === activeTabId ? 'main-tab-active' : ''}`}
                 onClick={() => setActiveTabId(session.sessionId)}
+                onDoubleClick={() => handleRenameSession(session)}
+                title="더블클릭하면 제목 변경"
               >
-                <span className="chat-tab-title">{projectBasename(session.projectPath)}</span>
+                <span className="chat-tab-title">{session.title}</span>
                 <button
                   className="chat-tab-close"
                   onClick={(e) => {

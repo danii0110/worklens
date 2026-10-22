@@ -28,6 +28,8 @@ const api = {
   fetchRecentComments: (issues: JiraIssue[]): Promise<RecentComment[]> =>
     ipcRenderer.invoke('jira:fetchRecentComments', issues),
   listClaudeSessions: (): Promise<ClaudeSession[]> => ipcRenderer.invoke('claude:listSessions'),
+  renameClaudeSession: (sessionId: string, title: string): Promise<void> =>
+    ipcRenderer.invoke('claude:renameSession', sessionId, title),
   chat: {
     start: (sessionId: string): Promise<string> => ipcRenderer.invoke('chat:start', sessionId),
     send: (chatId: string, text: string): void => {

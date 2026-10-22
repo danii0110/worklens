@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, nativeImage } from 'electron'
 import { join } from 'path'
 import { loadConfig, saveConfig, type JiraConfig } from './store'
 import { fetchMyIssues, fetchRecentComments, type JiraIssue } from './jira'
-import { listClaudeSessions } from './claudeSessions'
+import { listClaudeSessions, renameClaudeSession } from './claudeSessions'
 import { registerChatHandlers } from './chat'
 
 const iconPath = join(__dirname, '../../resources/icon.png')
@@ -65,6 +65,10 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('claude:listSessions', () => listClaudeSessions())
+
+  ipcMain.handle('claude:renameSession', (_event, sessionId: string, title: string) =>
+    renameClaudeSession(sessionId, title)
+  )
 
   const mainWindow = createWindow()
   registerChatHandlers(mainWindow)
