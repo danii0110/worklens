@@ -162,7 +162,7 @@ function ChatPanel({ tabId, mode }: ChatPanelProps) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSend()
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSend()
           }}
           disabled={Boolean(pendingPermission)}
         />

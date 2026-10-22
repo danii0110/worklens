@@ -399,7 +399,7 @@ function App() {
                       onChange={(e) => setRenameDraft(e.target.value)}
                       onBlur={() => commitRename(session)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') commitRename(session)
+                        if (e.key === 'Enter' && !e.nativeEvent.isComposing) commitRename(session)
                         if (e.key === 'Escape') setRenamingSessionId(null)
                       }}
                     />
@@ -453,7 +453,7 @@ function App() {
                     onChange={(e) => setRenameDraft(e.target.value)}
                     onBlur={() => commitRename(session)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') commitRename(session)
+                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) commitRename(session)
                       if (e.key === 'Escape') setRenamingSessionId(null)
                     }}
                   />
