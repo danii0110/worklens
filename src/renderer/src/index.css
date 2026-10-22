@@ -193,6 +193,21 @@ body,
   outline-offset: 1px;
 }
 
+.rename-input {
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+.rename-input-tab {
+  width: 120px;
+  padding: 2px 6px;
+  font-size: 13px;
+  border-radius: 4px;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--text);
+}
+
 .btn-primary {
   padding: 10px 16px;
   border-radius: 8px;
