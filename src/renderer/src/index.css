@@ -300,6 +300,28 @@ body,
   margin-bottom: 10px;
 }
 
+.view-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.view-toggle-btn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.view-toggle-active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}
+
 .status-summary {
   display: flex;
   flex-wrap: wrap;
@@ -312,8 +334,18 @@ body,
   font-weight: 600;
   padding: 6px 14px;
   border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.status-summary-chip:hover {
+  border-color: var(--accent);
+}
+.status-summary-chip-active {
   background: var(--accent);
   color: var(--accent-contrast);
+  border-color: var(--accent);
 }
 
 .issue-list {
@@ -349,6 +381,25 @@ body,
 }
 .drag-handle:active {
   cursor: grabbing;
+}
+
+.archive-btn {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 0 2px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.issue-item:hover .archive-btn,
+.archive-btn:focus-visible {
+  opacity: 1;
+}
+.archive-btn:hover {
+  color: var(--text);
 }
 
 .issue-title-group {

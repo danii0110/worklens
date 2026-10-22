@@ -10,6 +10,7 @@ type JiraIssue = Awaited<ReturnType<typeof window.api.fetchMyIssues>>[number]
 type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[number]
 type ClaudeSession = Awaited<ReturnType<typeof window.api.listClaudeSessions>>[number]
 type PriorityMap = Awaited<ReturnType<typeof window.api.getPriorityOrder>>
+type ArchivedKeys = Awaited<ReturnType<typeof window.api.getArchivedKeys>>
 
 // Explicit order for known statuses; anything else falls back to its Jira
 // status category (in-progress-like, then new, then done) instead of an
@@ -103,11 +104,35 @@ function App() {
   const [priorityMap, setPriorityMap] = useState<PriorityMap>({})
   const [draggedKey, setDraggedKey] = useState<string | null>(null)
   const [dragOverKey, setDragOverKey] = useState<string | null>(null)
+  const [archivedKeys, setArchivedKeys] = useState<ArchivedKeys>([])
+  const [viewMode, setViewMode] = useState<'active' | 'archived'>('active')
+  const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const seenCommentKeysRef = useRef<Set<string> | null>(null)
 
   useEffect(() => {
     window.api.getPriorityOrder().then(setPriorityMap)
+    window.api.getArchivedKeys().then(setArchivedKeys)
   }, [])
+
+  function selectViewMode(mode: 'active' | 'archived'): void {
+    setViewMode(mode)
+    setStatusFilter(null)
+  }
+
+  function emptyStateMessage(): string {
+    if (searchQuery.trim()) return '검색 결과가 없습니다.'
+    if (statusFilter) return '해당 상태의 티켓이 없습니다.'
+    if (viewMode === 'archived') return '보관한 티켓이 없습니다.'
+    return '표시할 티켓이 없습니다.'
+  }
+
+  function toggleArchive(issueKey: string): void {
+    const next = archivedKeys.includes(issueKey)
+      ? archivedKeys.filter((key) => key !== issueKey)
+      : [...archivedKeys, issueKey]
+    setArchivedKeys(next)
+    window.api.saveArchivedKeys(next)
+  }
 
   function reorderIssue(
     status: string,
@@ -233,20 +258,36 @@ function App() {
     () => new Map(comments.map((comment) => [comment.issueKey, comment])),
     [comments]
   )
+  const archivedKeySet = useMemo(() => new Set(archivedKeys), [archivedKeys])
+  const { activeIssues, archivedIssues } = useMemo(() => {
+    const active: JiraIssue[] = []
+    const archived: JiraIssue[] = []
+    for (const issue of issues) {
+      ;(archivedKeySet.has(issue.key) ? archived : active).push(issue)
+    }
+    return { activeIssues: active, archivedIssues: archived }
+  }, [issues, archivedKeySet])
+  const visibleIssues = viewMode === 'archived' ? archivedIssues : activeIssues
   const filteredIssues = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
-    if (!query) return issues
-    return issues.filter(
-      (issue) =>
-        issue.key.toLowerCase().includes(query) || issue.summary.toLowerCase().includes(query)
-    )
-  }, [issues, searchQuery])
+    let result = visibleIssues
+    if (query) {
+      result = result.filter(
+        (issue) =>
+          issue.key.toLowerCase().includes(query) || issue.summary.toLowerCase().includes(query)
+      )
+    }
+    if (statusFilter) {
+      result = result.filter((issue) => issue.status === statusFilter)
+    }
+    return result
+  }, [visibleIssues, searchQuery, statusFilter])
   const groupedIssues = useMemo(() => {
     return groupByStatus(filteredIssues).map(
       ([status, items]) => [status, applyPriorityOrder(status, items, priorityMap)] as const
     )
   }, [filteredIssues, priorityMap])
-  const statusSummary = useMemo(() => groupByStatus(issues), [issues])
+  const statusSummary = useMemo(() => groupByStatus(visibleIssues), [visibleIssues])
 
   return (
     <div className="app">
@@ -416,12 +457,31 @@ function App() {
                 </div>
               </div>
 
+              <div className="view-toggle">
+                <button
+                  className={`view-toggle-btn ${viewMode === 'active' ? 'view-toggle-active' : ''}`}
+                  onClick={() => selectViewMode('active')}
+                >
+                  볼 티켓 {activeIssues.length}
+                </button>
+                <button
+                  className={`view-toggle-btn ${viewMode === 'archived' ? 'view-toggle-active' : ''}`}
+                  onClick={() => selectViewMode('archived')}
+                >
+                  보관함 {archivedIssues.length}
+                </button>
+              </div>
+
               {statusSummary.length > 0 && (
                 <div className="status-summary">
                   {statusSummary.map(([status, items]) => (
-                    <span key={status} className="status-summary-chip">
+                    <button
+                      key={status}
+                      className={`status-summary-chip ${statusFilter === status ? 'status-summary-chip-active' : ''}`}
+                      onClick={() => setStatusFilter((prev) => (prev === status ? null : status))}
+                    >
                       {status} {items.length}
-                    </span>
+                    </button>
                   ))}
                 </div>
               )}
@@ -437,9 +497,7 @@ function App() {
               {error && <div className="error-banner">{error}</div>}
 
               {!loading && !error && configured && filteredIssues.length === 0 && (
-                <div className="empty-state">
-                  {searchQuery.trim() ? '검색 결과가 없습니다.' : '표시할 티켓이 없습니다.'}
-                </div>
+                <div className="empty-state">{emptyStateMessage()}</div>
               )}
 
               {groupedIssues.map(([status, items]) => (
@@ -499,6 +557,13 @@ function App() {
                                 {issue.dueDate}
                               </span>
                             )}
+                            <button
+                              className="archive-btn"
+                              onClick={() => toggleArchive(issue.key)}
+                              title={viewMode === 'archived' ? '보관 해제' : '보관'}
+                            >
+                              {viewMode === 'archived' ? '↩' : '🗄'}
+                            </button>
                           </div>
                           {comment && (
                             <div className="issue-comment">

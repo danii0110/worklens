@@ -4,6 +4,7 @@ import { loadConfig, saveConfig, type JiraConfig } from './store'
 import { fetchMyIssues, fetchRecentComments, type JiraIssue } from './jira'
 import { listClaudeSessions, renameClaudeSession } from './claudeSessions'
 import { loadPriorityOrder, savePriorityOrder, type PriorityMap } from './priorities'
+import { loadArchivedKeys, saveArchivedKeys, type ArchivedKeys } from './archive'
 import { registerChatHandlers } from './chat'
 
 const iconPath = join(__dirname, '../../resources/icon.png')
@@ -75,6 +76,12 @@ app.whenReady().then(() => {
 
   ipcMain.handle('priority:save', (_event, order: PriorityMap) => {
     savePriorityOrder(order)
+  })
+
+  ipcMain.handle('archive:get', () => loadArchivedKeys())
+
+  ipcMain.handle('archive:save', (_event, keys: ArchivedKeys) => {
+    saveArchivedKeys(keys)
   })
 
   const mainWindow = createWindow()

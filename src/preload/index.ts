@@ -6,7 +6,8 @@ import type {
   ClaudeSession,
   ChatEvent,
   ChatHistoryEntry,
-  PriorityMap
+  PriorityMap,
+  ArchivedKeys
 } from '../shared/types'
 
 export type {
@@ -16,7 +17,8 @@ export type {
   ClaudeSession,
   ChatEvent,
   ChatHistoryEntry,
-  PriorityMap
+  PriorityMap,
+  ArchivedKeys
 }
 
 function subscribe<Args extends unknown[]>(
@@ -46,6 +48,8 @@ const api = {
   getPriorityOrder: (): Promise<PriorityMap> => ipcRenderer.invoke('priority:get'),
   savePriorityOrder: (order: PriorityMap): Promise<void> =>
     ipcRenderer.invoke('priority:save', order),
+  getArchivedKeys: (): Promise<ArchivedKeys> => ipcRenderer.invoke('archive:get'),
+  saveArchivedKeys: (keys: ArchivedKeys): Promise<void> => ipcRenderer.invoke('archive:save', keys),
   chat: {
     getHistory: (sessionId: string): Promise<ChatHistoryEntry[]> =>
       ipcRenderer.invoke('chat:getHistory', sessionId),
