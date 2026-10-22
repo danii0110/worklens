@@ -333,8 +333,36 @@ body,
 .issue-row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
+}
+
+.issue-priority-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.priority-btn {
+  width: 18px;
+  height: 14px;
+  line-height: 1;
+  font-size: 9px;
+  padding: 0;
+  border: none;
+  background: var(--bg);
+  color: var(--text-muted);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.priority-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.priority-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
 .issue-comment {

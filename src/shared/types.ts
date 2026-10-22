@@ -30,6 +30,8 @@ export interface ClaudeSession {
   preview: string
 }
 
+export type PriorityMap = Record<string, string[]>
+
 export interface ChatHistoryEntry {
   role: 'user' | 'assistant' | 'tool'
   text: string

@@ -9,6 +9,7 @@ const TICKETS_TAB = 'tickets'
 type JiraIssue = Awaited<ReturnType<typeof window.api.fetchMyIssues>>[number]
 type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[number]
 type ClaudeSession = Awaited<ReturnType<typeof window.api.listClaudeSessions>>[number]
+type PriorityMap = Awaited<ReturnType<typeof window.api.getPriorityOrder>>
 
 // Explicit order for known statuses; anything else falls back to its Jira
 // status category (in-progress-like, then new, then done) instead of an
@@ -33,6 +34,32 @@ function groupByStatus(issues: JiraIssue[]): Array<[string, JiraIssue[]]> {
   return Array.from(groups.entries()).sort(
     ([a, itemsA], [b, itemsB]) => statusRank(a, itemsA) - statusRank(b, itemsB)
   )
+}
+
+// Issues with a saved position come first in that order; anything new or
+// not yet manually prioritized keeps its existing (due-date) relative order
+// appended at the end.
+function applyPriorityOrder(
+  status: string,
+  items: JiraIssue[],
+  priorityMap: PriorityMap
+): JiraIssue[] {
+  const order = priorityMap[status]
+  if (!order || order.length === 0) return items
+
+  const remaining = new Map(items.map((issue) => [issue.key, issue]))
+  const ordered: JiraIssue[] = []
+  for (const key of order) {
+    const issue = remaining.get(key)
+    if (issue) {
+      ordered.push(issue)
+      remaining.delete(key)
+    }
+  }
+  for (const issue of items) {
+    if (remaining.has(issue.key)) ordered.push(issue)
+  }
+  return ordered
 }
 
 function getDueDateClass(dueDate: string | null): 'overdue' | 'soon' | 'normal' {
@@ -73,7 +100,29 @@ function App() {
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [priorityMap, setPriorityMap] = useState<PriorityMap>({})
   const seenCommentKeysRef = useRef<Set<string> | null>(null)
+
+  useEffect(() => {
+    window.api.getPriorityOrder().then(setPriorityMap)
+  }, [])
+
+  function moveIssue(
+    status: string,
+    displayOrder: string[],
+    issueKey: string,
+    direction: -1 | 1
+  ): void {
+    const index = displayOrder.indexOf(issueKey)
+    const swapWith = index + direction
+    if (index === -1 || swapWith < 0 || swapWith >= displayOrder.length) return
+
+    const nextOrder = [...displayOrder]
+    ;[nextOrder[index], nextOrder[swapWith]] = [nextOrder[swapWith], nextOrder[index]]
+    const nextPriorityMap = { ...priorityMap, [status]: nextOrder }
+    setPriorityMap(nextPriorityMap)
+    window.api.savePriorityOrder(nextPriorityMap)
+  }
 
   const notifyNewComments = useCallback((commentResult: RecentComment[]) => {
     const seen = seenCommentKeysRef.current
@@ -188,7 +237,11 @@ function App() {
         issue.key.toLowerCase().includes(query) || issue.summary.toLowerCase().includes(query)
     )
   }, [issues, searchQuery])
-  const groupedIssues = useMemo(() => groupByStatus(filteredIssues), [filteredIssues])
+  const groupedIssues = useMemo(() => {
+    return groupByStatus(filteredIssues).map(
+      ([status, items]) => [status, applyPriorityOrder(status, items, priorityMap)] as const
+    )
+  }, [filteredIssues, priorityMap])
   const statusSummary = useMemo(() => groupByStatus(issues), [issues])
 
   return (
@@ -391,11 +444,30 @@ function App() {
                     {status} {items.length}
                   </span>
                   <ul className="issue-list">
-                    {items.map((issue) => {
+                    {items.map((issue, index) => {
                       const comment = commentsByIssueKey.get(issue.key)
+                      const displayOrder = items.map((i) => i.key)
                       return (
                         <li key={issue.key} className="issue-item">
                           <div className="issue-row">
+                            <div className="issue-priority-controls">
+                              <button
+                                className="priority-btn"
+                                disabled={index === 0}
+                                onClick={() => moveIssue(status, displayOrder, issue.key, -1)}
+                                title="우선순위 올리기"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                className="priority-btn"
+                                disabled={index === items.length - 1}
+                                onClick={() => moveIssue(status, displayOrder, issue.key, 1)}
+                                title="우선순위 내리기"
+                              >
+                                ▼
+                              </button>
+                            </div>
                             <div>
                               <a
                                 className="issue-key"

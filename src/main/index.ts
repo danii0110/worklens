@@ -3,6 +3,7 @@ import { join } from 'path'
 import { loadConfig, saveConfig, type JiraConfig } from './store'
 import { fetchMyIssues, fetchRecentComments, type JiraIssue } from './jira'
 import { listClaudeSessions, renameClaudeSession } from './claudeSessions'
+import { loadPriorityOrder, savePriorityOrder, type PriorityMap } from './priorities'
 import { registerChatHandlers } from './chat'
 
 const iconPath = join(__dirname, '../../resources/icon.png')
@@ -69,6 +70,12 @@ app.whenReady().then(() => {
   ipcMain.handle('claude:renameSession', (_event, sessionId: string, title: string) =>
     renameClaudeSession(sessionId, title)
   )
+
+  ipcMain.handle('priority:get', () => loadPriorityOrder())
+
+  ipcMain.handle('priority:save', (_event, order: PriorityMap) => {
+    savePriorityOrder(order)
+  })
 
   const mainWindow = createWindow()
   registerChatHandlers(mainWindow)

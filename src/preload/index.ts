@@ -5,10 +5,19 @@ import type {
   RecentComment,
   ClaudeSession,
   ChatEvent,
-  ChatHistoryEntry
+  ChatHistoryEntry,
+  PriorityMap
 } from '../shared/types'
 
-export type { JiraConfig, JiraIssue, RecentComment, ClaudeSession, ChatEvent, ChatHistoryEntry }
+export type {
+  JiraConfig,
+  JiraIssue,
+  RecentComment,
+  ClaudeSession,
+  ChatEvent,
+  ChatHistoryEntry,
+  PriorityMap
+}
 
 function subscribe<Args extends unknown[]>(
   channel: string,
@@ -34,6 +43,9 @@ const api = {
   notify: (title: string, body: string): void => {
     ipcRenderer.send('app:notify', title, body)
   },
+  getPriorityOrder: (): Promise<PriorityMap> => ipcRenderer.invoke('priority:get'),
+  savePriorityOrder: (order: PriorityMap): Promise<void> =>
+    ipcRenderer.invoke('priority:save', order),
   chat: {
     getHistory: (sessionId: string): Promise<ChatHistoryEntry[]> =>
       ipcRenderer.invoke('chat:getHistory', sessionId),
