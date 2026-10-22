@@ -31,6 +31,9 @@ const api = {
   listClaudeSessions: (): Promise<ClaudeSession[]> => ipcRenderer.invoke('claude:listSessions'),
   renameClaudeSession: (sessionId: string, title: string): Promise<void> =>
     ipcRenderer.invoke('claude:renameSession', sessionId, title),
+  notify: (title: string, body: string): void => {
+    ipcRenderer.send('app:notify', title, body)
+  },
   chat: {
     getHistory: (sessionId: string): Promise<ChatHistoryEntry[]> =>
       ipcRenderer.invoke('chat:getHistory', sessionId),

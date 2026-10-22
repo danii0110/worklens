@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, nativeImage } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, nativeImage, Notification } from 'electron'
 import { join } from 'path'
 import { loadConfig, saveConfig, type JiraConfig } from './store'
 import { fetchMyIssues, fetchRecentComments, type JiraIssue } from './jira'
@@ -72,6 +72,15 @@ app.whenReady().then(() => {
 
   const mainWindow = createWindow()
   registerChatHandlers(mainWindow)
+
+  ipcMain.on('app:notify', (_event, title: string, body: string) => {
+    const notification = new Notification({ title, body })
+    notification.on('click', () => {
+      mainWindow.show()
+      mainWindow.focus()
+    })
+    notification.show()
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

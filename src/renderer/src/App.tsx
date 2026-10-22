@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ChatPanel from './ChatPanel'
 import { usePolling } from './usePolling'
 
@@ -73,6 +73,32 @@ function App() {
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const seenCommentKeysRef = useRef<Set<string> | null>(null)
+  const notifiedDeadlineKeysRef = useRef<Set<string>>(new Set())
+
+  const notifyNewComments = useCallback((commentResult: RecentComment[]) => {
+    const seen = seenCommentKeysRef.current
+    const nextKeys = new Set(commentResult.map((c) => `${c.issueKey}:${c.created}`))
+    if (seen) {
+      for (const comment of commentResult) {
+        const key = `${comment.issueKey}:${comment.created}`
+        if (!seen.has(key)) {
+          window.api.notify(`${comment.issueKey} 새 댓글`, `${comment.author}: ${comment.body}`)
+        }
+      }
+    }
+    seenCommentKeysRef.current = nextKeys
+  }, [])
+
+  const notifyApproachingDeadlines = useCallback((issueResult: JiraIssue[]) => {
+    for (const issue of issueResult) {
+      const urgency = getDueDateClass(issue.dueDate)
+      if (urgency === 'normal' || notifiedDeadlineKeysRef.current.has(issue.key)) continue
+      notifiedDeadlineKeysRef.current.add(issue.key)
+      const label = urgency === 'overdue' ? '마감 지남' : '마감 임박'
+      window.api.notify(`${issue.key} ${label}`, issue.summary)
+    }
+  }, [])
 
   const handleFetch = useCallback(async (): Promise<void> => {
     setLoading(true)
@@ -80,6 +106,8 @@ function App() {
     try {
       const issueResult = await window.api.fetchMyIssues()
       const commentResult = await window.api.fetchRecentComments(issueResult)
+      notifyNewComments(commentResult)
+      notifyApproachingDeadlines(issueResult)
       setIssues(issueResult)
       setComments(commentResult)
       setLastUpdated(new Date())
@@ -88,7 +116,7 @@ function App() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [notifyNewComments, notifyApproachingDeadlines])
 
   useEffect(() => {
     window.api.getConfig().then((config) => {
