@@ -19,6 +19,13 @@ interface OpenTab {
   kind: 'new' | 'resume'
   ticketKey?: string
   subdir?: string
+  status?: 'busy' | 'done'
+}
+
+const DONE_PHRASES = ['완료했어요!', '다 했어요~', '짜잔, 끝!', '작업 끝났어요!']
+
+function pickDonePhrase(): string {
+  return DONE_PHRASES[Math.floor(Math.random() * DONE_PHRASES.length)]
 }
 
 // Explicit order for known statuses; anything else falls back to its Jira
@@ -119,6 +126,7 @@ function App() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [ticketSessions, setTicketSessions] = useState<TicketSessionMap>({})
   const [projectSubdirs, setProjectSubdirs] = useState<string[]>([])
+  const [toasts, setToasts] = useState<{ id: string; text: string }[]>([])
   const seenCommentKeysRef = useRef<Set<string> | null>(null)
 
   useEffect(() => {
@@ -230,6 +238,29 @@ function App() {
     window.open(url, '_blank')
   }
 
+  function updateTab(tabId: string, updater: (tab: OpenTab) => OpenTab): void {
+    setOpenTabs((prev) => prev.map((t) => (t.tabId === tabId ? updater(t) : t)))
+  }
+
+  function selectTab(tabId: string): void {
+    setActiveTabId(tabId)
+    updateTab(tabId, (t) => ({ ...t, status: undefined }))
+  }
+
+  function pushToast(text: string): void {
+    const id = crypto.randomUUID()
+    setToasts((prev) => [...prev, { id, text }])
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000)
+  }
+
+  function handleTabStatusChange(tabId: string, status: 'busy' | 'done'): void {
+    updateTab(tabId, (t) => ({ ...t, status }))
+    if (status === 'done' && tabId !== activeTabId) {
+      const tab = openTabs.find((t) => t.tabId === tabId)
+      if (tab) pushToast(`🐣 ${tab.session.title} ${pickDonePhrase()}`)
+    }
+  }
+
   function handleOpenSession(session: ClaudeSession): void {
     const alreadyOpen = openTabs.some((t) => t.tabId === session.sessionId)
     if (!alreadyOpen) {
@@ -244,7 +275,7 @@ function App() {
       }
       setOpenTabs((prev) => [...prev, { tabId: session.sessionId, session, kind: 'resume' }])
     }
-    setActiveTabId(session.sessionId)
+    selectTab(session.sessionId)
   }
 
   function handleCloseTab(tabId: string): void {
@@ -289,7 +320,7 @@ function App() {
       ...prev,
       { tabId, session: stub, kind: 'new', ticketKey: issueKey, subdir }
     ])
-    setActiveTabId(tabId)
+    selectTab(tabId)
   }
 
   function handleNewSessionCreated(
@@ -297,9 +328,7 @@ function App() {
     ticketKey: string | undefined,
     sessionId: string
   ): void {
-    setOpenTabs((prev) =>
-      prev.map((t) => (t.tabId === tabId ? { ...t, session: { ...t.session, sessionId } } : t))
-    )
+    updateTab(tabId, (t) => ({ ...t, session: { ...t.session, sessionId } }))
     const tab = openTabs.find((t) => t.tabId === tabId)
     if (tab) {
       setClaudeSessions((prev) => [{ ...tab.session, sessionId }, ...prev])
@@ -324,11 +353,7 @@ function App() {
     const applyRename = (s: ClaudeSession): ClaudeSession =>
       s.sessionId === session.sessionId ? { ...s, title: nextTitle } : s
     setClaudeSessions((prev) => prev.map(applyRename))
-    setOpenTabs((prev) =>
-      prev.map((t) =>
-        t.tabId === session.sessionId ? { ...t, session: applyRename(t.session) } : t
-      )
-    )
+    updateTab(session.sessionId, (t) => ({ ...t, session: applyRename(t.session) }))
   }
 
   const commentsByIssueKey = useMemo(
@@ -437,11 +462,11 @@ function App() {
             >
               내 담당 티켓
             </div>
-            {openTabs.map(({ tabId, session }) => (
+            {openTabs.map(({ tabId, session, status }) => (
               <div
                 key={tabId}
                 className={`main-tab ${tabId === activeTabId ? 'main-tab-active' : ''}`}
-                onClick={() => setActiveTabId(tabId)}
+                onClick={() => selectTab(tabId)}
                 title="더블클릭하면 제목 변경"
               >
                 {renamingSessionId === session.sessionId ? (
@@ -465,6 +490,7 @@ function App() {
                       startRename(session)
                     }}
                   >
+                    {status === 'busy' ? '💭 ' : status === 'done' ? '🐣 ' : ''}
                     {session.title}
                   </span>
                 )}
@@ -724,9 +750,18 @@ function App() {
                       }
                     : { type: 'resume', sessionId: tab.session.sessionId }
                 }
+                onStatusChange={(status) => handleTabStatusChange(tab.tabId, status)}
               />
             </div>
           ))}
+
+          <div className="toast-container">
+            {toasts.map((toast) => (
+              <div key={toast.id} className="toast">
+                {toast.text}
+              </div>
+            ))}
+          </div>
         </main>
       </div>
     </div>

@@ -20,9 +20,10 @@ type ChatPanelMode =
 interface ChatPanelProps {
   tabId: string
   mode: ChatPanelMode
+  onStatusChange?: (status: 'busy' | 'done') => void
 }
 
-function ChatPanel({ tabId, mode }: ChatPanelProps) {
+function ChatPanel({ tabId, mode, onStatusChange }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loadingHistory, setLoadingHistory] = useState(mode.type === 'resume')
   const [input, setInput] = useState('')
@@ -31,6 +32,11 @@ function ChatPanel({ tabId, mode }: ChatPanelProps) {
   const chatIdRef = useRef<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const initialModeRef = useRef(mode)
+  const onStatusChangeRef = useRef(onStatusChange)
+
+  useEffect(() => {
+    onStatusChangeRef.current = onStatusChange
+  })
 
   useEffect(() => {
     const initialMode = initialModeRef.current
@@ -55,6 +61,7 @@ function ChatPanel({ tabId, mode }: ChatPanelProps) {
           setPendingPermission({ id: event.id, toolName: event.toolName, input: event.input })
         } else if (event.type === 'turn-complete') {
           setBusy(false)
+          onStatusChangeRef.current?.('done')
         } else if (event.type === 'error') {
           setMessages((prev) => [
             ...prev,
@@ -109,6 +116,7 @@ function ChatPanel({ tabId, mode }: ChatPanelProps) {
     window.api.chat.send(chatIdRef.current, text)
     setInput('')
     setBusy(true)
+    onStatusChangeRef.current?.('busy')
   }
 
   function respondPermission(approve: boolean): void {
