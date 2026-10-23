@@ -88,9 +88,13 @@ body,
   overflow-y: auto;
 }
 
-.notes-view {
-  flex: 1;
-  min-height: 0;
+.notes-popover {
+  position: fixed;
+  top: 64px;
+  right: 24px;
+  width: 320px;
+  height: 400px;
+  z-index: 1000;
 }
 
 .notes-textarea {
@@ -170,6 +174,12 @@ body,
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .header h1 {

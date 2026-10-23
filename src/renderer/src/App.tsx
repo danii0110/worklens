@@ -5,7 +5,6 @@ import { usePolling } from './usePolling'
 const POLL_INTERVAL_MS = 5 * 60 * 1000
 const RECENTLY_ACTIVE_THRESHOLD_MS = 2 * 60 * 1000
 const TICKETS_TAB = 'tickets'
-const NOTES_TAB = 'notes'
 const NOTES_SAVE_DEBOUNCE_MS = 500
 
 type JiraIssue = Awaited<ReturnType<typeof window.api.fetchMyIssues>>[number]
@@ -114,6 +113,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [showNotes, setShowNotes] = useState(false)
   const [claudeSessions, setClaudeSessions] = useState<ClaudeSession[]>([])
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string>(TICKETS_TAB)
@@ -408,14 +408,35 @@ function App() {
     <div className="app">
       <div className="header">
         <h1>WorkLens</h1>
-        <button
-          className="icon-button"
-          onClick={() => setShowSettings((prev) => !prev)}
-          title="Jira 설정"
-        >
-          ⚙️
-        </button>
+        <div className="header-actions">
+          <button
+            className="icon-button"
+            onClick={() => setShowNotes((prev) => !prev)}
+            title="메모"
+          >
+            📝
+          </button>
+          <button
+            className="icon-button"
+            onClick={() => setShowSettings((prev) => !prev)}
+            title="Jira 설정"
+          >
+            ⚙️
+          </button>
+        </div>
       </div>
+
+      {showNotes && (
+        <div className="notes-popover">
+          <textarea
+            className="notes-textarea"
+            autoFocus
+            placeholder="자유롭게 메모하세요 (자동 저장됩니다)"
+            value={notes}
+            onChange={(e) => handleNotesChange(e.target.value)}
+          />
+        </div>
+      )}
 
       <div className="layout">
         <aside className="sidebar">
@@ -474,12 +495,6 @@ function App() {
               onClick={() => setActiveTabId(TICKETS_TAB)}
             >
               내 담당 티켓
-            </div>
-            <div
-              className={`main-tab ${activeTabId === NOTES_TAB ? 'main-tab-active' : ''}`}
-              onClick={() => setActiveTabId(NOTES_TAB)}
-            >
-              메모
             </div>
             {openTabs.map(({ tabId, session, status }) => (
               <div
@@ -749,18 +764,6 @@ function App() {
                 </div>
               ))}
             </section>
-          </div>
-
-          <div
-            className="notes-view"
-            style={{ display: activeTabId === NOTES_TAB ? 'flex' : 'none' }}
-          >
-            <textarea
-              className="notes-textarea"
-              placeholder="자유롭게 메모하세요 (자동 저장됩니다)"
-              value={notes}
-              onChange={(e) => handleNotesChange(e.target.value)}
-            />
           </div>
 
           {openTabs.map((tab) => (
