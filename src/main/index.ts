@@ -7,6 +7,7 @@ import { loadPriorityOrder, savePriorityOrder, type PriorityMap } from './priori
 import { loadArchivedKeys, saveArchivedKeys, type ArchivedKeys } from './archive'
 import { loadTicketSessions, saveTicketSessions, type TicketSessionMap } from './ticketSessions'
 import { listProjectSubdirs } from './projectDirs'
+import { loadNotes, saveNotes } from './notes'
 import { registerChatHandlers } from './chat'
 
 const iconPath = join(__dirname, '../../resources/icon.png')
@@ -95,6 +96,12 @@ app.whenReady().then(() => {
   ipcMain.handle('project:listSubdirs', () => {
     const basePath = loadConfig().defaultProjectPath
     return basePath ? listProjectSubdirs(basePath) : []
+  })
+
+  ipcMain.handle('notes:get', () => loadNotes())
+
+  ipcMain.handle('notes:save', (_event, text: string) => {
+    saveNotes(text)
   })
 
   const mainWindow = createWindow()

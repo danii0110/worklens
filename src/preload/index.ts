@@ -56,6 +56,8 @@ const api = {
   saveTicketSessions: (map: TicketSessionMap): Promise<void> =>
     ipcRenderer.invoke('ticketSession:save', map),
   listProjectSubdirs: (): Promise<string[]> => ipcRenderer.invoke('project:listSubdirs'),
+  getNotes: (): Promise<string> => ipcRenderer.invoke('notes:get'),
+  saveNotes: (text: string): Promise<void> => ipcRenderer.invoke('notes:save', text),
   chat: {
     getHistory: (sessionId: string): Promise<ChatHistoryEntry[]> =>
       ipcRenderer.invoke('chat:getHistory', sessionId),

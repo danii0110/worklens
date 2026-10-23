@@ -5,6 +5,8 @@ import { usePolling } from './usePolling'
 const POLL_INTERVAL_MS = 5 * 60 * 1000
 const RECENTLY_ACTIVE_THRESHOLD_MS = 2 * 60 * 1000
 const TICKETS_TAB = 'tickets'
+const NOTES_TAB = 'notes'
+const NOTES_SAVE_DEBOUNCE_MS = 500
 
 type JiraIssue = Awaited<ReturnType<typeof window.api.fetchMyIssues>>[number]
 type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[number]
@@ -127,14 +129,25 @@ function App() {
   const [ticketSessions, setTicketSessions] = useState<TicketSessionMap>({})
   const [projectSubdirs, setProjectSubdirs] = useState<string[]>([])
   const [toasts, setToasts] = useState<{ id: string; text: string }[]>([])
+  const [notes, setNotes] = useState('')
   const seenCommentKeysRef = useRef<Set<string> | null>(null)
+  const notesSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     window.api.getPriorityOrder().then(setPriorityMap)
     window.api.getArchivedKeys().then(setArchivedKeys)
     window.api.getTicketSessions().then(setTicketSessions)
     window.api.listProjectSubdirs().then(setProjectSubdirs)
+    window.api.getNotes().then(setNotes)
   }, [])
+
+  function handleNotesChange(text: string): void {
+    setNotes(text)
+    if (notesSaveTimerRef.current) clearTimeout(notesSaveTimerRef.current)
+    notesSaveTimerRef.current = setTimeout(() => {
+      window.api.saveNotes(text)
+    }, NOTES_SAVE_DEBOUNCE_MS)
+  }
 
   function selectViewMode(mode: 'active' | 'archived'): void {
     setViewMode(mode)
@@ -462,6 +475,12 @@ function App() {
             >
               내 담당 티켓
             </div>
+            <div
+              className={`main-tab ${activeTabId === NOTES_TAB ? 'main-tab-active' : ''}`}
+              onClick={() => setActiveTabId(NOTES_TAB)}
+            >
+              메모
+            </div>
             {openTabs.map(({ tabId, session, status }) => (
               <div
                 key={tabId}
@@ -730,6 +749,18 @@ function App() {
                 </div>
               ))}
             </section>
+          </div>
+
+          <div
+            className="notes-view"
+            style={{ display: activeTabId === NOTES_TAB ? 'flex' : 'none' }}
+          >
+            <textarea
+              className="notes-textarea"
+              placeholder="자유롭게 메모하세요 (자동 저장됩니다)"
+              value={notes}
+              onChange={(e) => handleNotesChange(e.target.value)}
+            />
           </div>
 
           {openTabs.map((tab) => (
