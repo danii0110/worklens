@@ -36,6 +36,12 @@ function pickDonePhrase(): string {
 const STATUS_ORDER = ['진행 중', '개발완료', '미해결']
 const CATEGORY_RANK: Record<string, number> = { indeterminate: 0, new: 1, done: 2 }
 
+// Jira가 같은 의미의 상태를 "진행 중"/"진행중"처럼 띄어쓰기만 다르게 반환하는
+// 경우가 있어, 알려진 쌍은 하나로 합쳐서 그룹/필터/칩이 쪼개지지 않게 한다.
+function normalizeStatus(status: string): string {
+  return status.replace(/\s+/g, '') === '진행중' ? '진행 중' : status
+}
+
 function statusRank(status: string, items: JiraIssue[]): number {
   const explicitRank = STATUS_ORDER.indexOf(status)
   if (explicitRank !== -1) return explicitRank
@@ -46,9 +52,10 @@ function statusRank(status: string, items: JiraIssue[]): number {
 function groupByStatus(issues: JiraIssue[]): Array<[string, JiraIssue[]]> {
   const groups = new Map<string, JiraIssue[]>()
   for (const issue of issues) {
-    const group = groups.get(issue.status) ?? []
+    const key = normalizeStatus(issue.status)
+    const group = groups.get(key) ?? []
     group.push(issue)
-    groups.set(issue.status, group)
+    groups.set(key, group)
   }
   return Array.from(groups.entries()).sort(
     ([a, itemsA], [b, itemsB]) => statusRank(a, itemsA) - statusRank(b, itemsB)
@@ -404,7 +411,7 @@ function App() {
       )
     }
     if (statusFilter) {
-      result = result.filter((issue) => issue.status === statusFilter)
+      result = result.filter((issue) => normalizeStatus(issue.status) === statusFilter)
     }
     return result
   }, [visibleIssues, searchQuery, statusFilter])
