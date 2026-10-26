@@ -793,6 +793,11 @@ function App() {
 
               {groupedIssues.map(([status, items]) => (
                 <div key={status} className="status-group">
+                  {!statusFilter && (
+                    <div className="status-group-label">
+                      {status} {items.length}
+                    </div>
+                  )}
                   <ul className="issue-list">
                     {items.map((issue) =>
                       renderIssueRow(
