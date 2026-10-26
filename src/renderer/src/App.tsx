@@ -12,6 +12,7 @@ type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[
 type ClaudeSession = Awaited<ReturnType<typeof window.api.listClaudeSessions>>[number]
 type PriorityMap = Awaited<ReturnType<typeof window.api.getPriorityOrder>>
 type ArchivedKeys = Awaited<ReturnType<typeof window.api.getArchivedKeys>>
+type PinnedKeys = Awaited<ReturnType<typeof window.api.getPinnedKeys>>
 type TicketSessionMap = Awaited<ReturnType<typeof window.api.getTicketSessions>>
 
 interface OpenTab {
@@ -124,6 +125,7 @@ function App() {
   const [draggedKey, setDraggedKey] = useState<string | null>(null)
   const [dragOverKey, setDragOverKey] = useState<string | null>(null)
   const [archivedKeys, setArchivedKeys] = useState<ArchivedKeys>([])
+  const [pinnedKeys, setPinnedKeys] = useState<PinnedKeys>([])
   const [viewMode, setViewMode] = useState<'active' | 'archived'>('active')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [ticketSessions, setTicketSessions] = useState<TicketSessionMap>({})
@@ -136,6 +138,7 @@ function App() {
   useEffect(() => {
     window.api.getPriorityOrder().then(setPriorityMap)
     window.api.getArchivedKeys().then(setArchivedKeys)
+    window.api.getPinnedKeys().then(setPinnedKeys)
     window.api.getTicketSessions().then(setTicketSessions)
     window.api.listProjectSubdirs().then(setProjectSubdirs)
     window.api.getNotes().then(setNotes)
@@ -167,6 +170,14 @@ function App() {
       : [...archivedKeys, issueKey]
     setArchivedKeys(next)
     window.api.saveArchivedKeys(next)
+  }
+
+  function togglePin(issueKey: string): void {
+    const next = pinnedKeys.includes(issueKey)
+      ? pinnedKeys.filter((key) => key !== issueKey)
+      : [...pinnedKeys, issueKey]
+    setPinnedKeys(next)
+    window.api.savePinnedKeys(next)
   }
 
   function reorderIssue(
@@ -397,12 +408,142 @@ function App() {
     }
     return result
   }, [visibleIssues, searchQuery, statusFilter])
+  const pinnedKeySet = useMemo(() => new Set(pinnedKeys), [pinnedKeys])
+  const { pinnedIssues, restIssues } = useMemo(() => {
+    const pinned: JiraIssue[] = []
+    const rest: JiraIssue[] = []
+    for (const issue of filteredIssues) {
+      ;(pinnedKeySet.has(issue.key) ? pinned : rest).push(issue)
+    }
+    return { pinnedIssues: pinned, restIssues: rest }
+  }, [filteredIssues, pinnedKeySet])
   const groupedIssues = useMemo(() => {
-    return groupByStatus(filteredIssues).map(
+    return groupByStatus(restIssues).map(
       ([status, items]) => [status, applyPriorityOrder(status, items, priorityMap)] as const
     )
-  }, [filteredIssues, priorityMap])
+  }, [restIssues, priorityMap])
   const statusSummary = useMemo(() => groupByStatus(visibleIssues), [visibleIssues])
+
+  function renderIssueRow(issue: JiraIssue, displayOrder: string[] | null, status: string | null) {
+    const comment = commentsByIssueKey.get(issue.key)
+    const dueDateClass = getDueDateClass(issue.dueDate)
+    const isDraggable = displayOrder !== null && status !== null
+
+    return (
+      <li
+        key={issue.key}
+        className={`issue-item issue-item-${dueDateClass} ${dragOverKey === issue.key ? 'issue-item-drag-over' : ''}`}
+        onDragOver={
+          isDraggable
+            ? (e) => {
+                e.preventDefault()
+                setDragOverKey(issue.key)
+              }
+            : undefined
+        }
+        onDragLeave={isDraggable ? () => setDragOverKey(null) : undefined}
+        onDrop={
+          isDraggable
+            ? (e) => {
+                e.preventDefault()
+                if (draggedKey) {
+                  reorderIssue(status as string, displayOrder as string[], draggedKey, issue.key)
+                }
+                setDraggedKey(null)
+                setDragOverKey(null)
+              }
+            : undefined
+        }
+      >
+        <div className="issue-row">
+          {isDraggable && (
+            <span
+              className="drag-handle"
+              draggable
+              onDragStart={() => setDraggedKey(issue.key)}
+              onDragEnd={() => {
+                setDraggedKey(null)
+                setDragOverKey(null)
+              }}
+              title="드래그해서 순서 변경"
+            >
+              ⠿
+            </span>
+          )}
+          <div className="issue-title-group">
+            <a
+              className="issue-key"
+              href={issue.url}
+              onClick={(e) => {
+                e.preventDefault()
+                openExternal(issue.url)
+              }}
+            >
+              {issue.key}
+            </a>{' '}
+            <span className="issue-summary">{issue.summary}</span>
+          </div>
+        </div>
+        {comment && (
+          <div className="issue-comment">
+            💬 <strong>{comment.author}</strong> {comment.body}
+            <span className="meta"> · {formatRelativeTime(comment.created)}</span>
+          </div>
+        )}
+        <div className="issue-actions">
+          {ticketSessions[issue.key] ? (
+            <button
+              className="btn-ghost issue-action-btn"
+              onClick={() => handleOpenSession(resolveSessionObject(ticketSessions[issue.key]))}
+            >
+              이어하기
+            </button>
+          ) : (
+            <button
+              className="btn-ghost issue-action-btn"
+              onClick={() => handleStartNewSessionForTicket(issue.key, issue.summary)}
+              disabled={!defaultProjectPath}
+              title={
+                defaultProjectPath ? undefined : '설정에서 기본 프로젝트 경로를 먼저 지정하세요'
+              }
+            >
+              새로하기
+            </button>
+          )}
+          {!ticketSessions[issue.key] && projectSubdirs.length > 0 && (
+            <select
+              className="field subdir-select"
+              value=""
+              onChange={(e) => {
+                const subdir = e.target.value
+                if (subdir) {
+                  handleStartNewSessionForTicket(issue.key, issue.summary, subdir)
+                }
+              }}
+            >
+              <option value="" disabled>
+                하위 폴더 선택
+              </option>
+              {projectSubdirs.map((dir) => (
+                <option key={dir} value={dir}>
+                  {dir}
+                </option>
+              ))}
+            </select>
+          )}
+          <button className="archive-btn" onClick={() => togglePin(issue.key)}>
+            {pinnedKeySet.has(issue.key) ? '고정 해제' : '고정'}
+          </button>
+          <button className="archive-btn" onClick={() => toggleArchive(issue.key)}>
+            {viewMode === 'archived' ? '꺼내기' : '보관'}
+          </button>
+          {issue.dueDate && (
+            <span className={`due-date due-date-${dueDateClass}`}>{issue.dueDate}</span>
+          )}
+        </div>
+      </li>
+    )
+  }
 
   return (
     <div className="app">
@@ -641,125 +782,25 @@ function App() {
                 <div className="empty-state">{emptyStateMessage()}</div>
               )}
 
+              {pinnedIssues.length > 0 && (
+                <div className="status-group pinned-group">
+                  <div className="pinned-label">📌 고정됨</div>
+                  <ul className="issue-list">
+                    {pinnedIssues.map((issue) => renderIssueRow(issue, null, null))}
+                  </ul>
+                </div>
+              )}
+
               {groupedIssues.map(([status, items]) => (
                 <div key={status} className="status-group">
                   <ul className="issue-list">
-                    {items.map((issue) => {
-                      const comment = commentsByIssueKey.get(issue.key)
-                      const displayOrder = items.map((i) => i.key)
-                      const dueDateClass = getDueDateClass(issue.dueDate)
-                      return (
-                        <li
-                          key={issue.key}
-                          className={`issue-item issue-item-${dueDateClass} ${dragOverKey === issue.key ? 'issue-item-drag-over' : ''}`}
-                          onDragOver={(e) => {
-                            e.preventDefault()
-                            setDragOverKey(issue.key)
-                          }}
-                          onDragLeave={() => setDragOverKey(null)}
-                          onDrop={(e) => {
-                            e.preventDefault()
-                            if (draggedKey)
-                              reorderIssue(status, displayOrder, draggedKey, issue.key)
-                            setDraggedKey(null)
-                            setDragOverKey(null)
-                          }}
-                        >
-                          <div className="issue-row">
-                            <span
-                              className="drag-handle"
-                              draggable
-                              onDragStart={() => setDraggedKey(issue.key)}
-                              onDragEnd={() => {
-                                setDraggedKey(null)
-                                setDragOverKey(null)
-                              }}
-                              title="드래그해서 순서 변경"
-                            >
-                              ⠿
-                            </span>
-                            <div className="issue-title-group">
-                              <a
-                                className="issue-key"
-                                href={issue.url}
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  openExternal(issue.url)
-                                }}
-                              >
-                                {issue.key}
-                              </a>{' '}
-                              <span className="issue-summary">{issue.summary}</span>
-                            </div>
-                          </div>
-                          {comment && (
-                            <div className="issue-comment">
-                              💬 <strong>{comment.author}</strong> {comment.body}
-                              <span className="meta"> · {formatRelativeTime(comment.created)}</span>
-                            </div>
-                          )}
-                          <div className="issue-actions">
-                            {ticketSessions[issue.key] ? (
-                              <button
-                                className="btn-ghost issue-action-btn"
-                                onClick={() =>
-                                  handleOpenSession(resolveSessionObject(ticketSessions[issue.key]))
-                                }
-                              >
-                                이어하기
-                              </button>
-                            ) : (
-                              <button
-                                className="btn-ghost issue-action-btn"
-                                onClick={() =>
-                                  handleStartNewSessionForTicket(issue.key, issue.summary)
-                                }
-                                disabled={!defaultProjectPath}
-                                title={
-                                  defaultProjectPath
-                                    ? undefined
-                                    : '설정에서 기본 프로젝트 경로를 먼저 지정하세요'
-                                }
-                              >
-                                새로하기
-                              </button>
-                            )}
-                            {!ticketSessions[issue.key] && projectSubdirs.length > 0 && (
-                              <select
-                                className="field subdir-select"
-                                value=""
-                                onChange={(e) => {
-                                  const subdir = e.target.value
-                                  if (subdir) {
-                                    handleStartNewSessionForTicket(issue.key, issue.summary, subdir)
-                                  }
-                                }}
-                              >
-                                <option value="" disabled>
-                                  하위 폴더 선택
-                                </option>
-                                {projectSubdirs.map((dir) => (
-                                  <option key={dir} value={dir}>
-                                    {dir}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
-                            <button
-                              className="archive-btn"
-                              onClick={() => toggleArchive(issue.key)}
-                            >
-                              {viewMode === 'archived' ? '꺼내기' : '보관'}
-                            </button>
-                            {issue.dueDate && (
-                              <span className={`due-date due-date-${dueDateClass}`}>
-                                {issue.dueDate}
-                              </span>
-                            )}
-                          </div>
-                        </li>
+                    {items.map((issue) =>
+                      renderIssueRow(
+                        issue,
+                        items.map((i) => i.key),
+                        status
                       )
-                    })}
+                    )}
                   </ul>
                 </div>
               ))}

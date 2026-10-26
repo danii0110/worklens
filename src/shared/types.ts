@@ -35,6 +35,8 @@ export type PriorityMap = Record<string, string[]>
 
 export type ArchivedKeys = string[]
 
+export type PinnedKeys = string[]
+
 export type TicketSessionMap = Record<string, string>
 
 export interface ChatHistoryEntry {

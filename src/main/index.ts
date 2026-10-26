@@ -5,6 +5,7 @@ import { fetchMyIssues, fetchRecentComments, type JiraIssue } from './jira'
 import { listClaudeSessions, renameClaudeSession } from './claudeSessions'
 import { loadPriorityOrder, savePriorityOrder, type PriorityMap } from './priorities'
 import { loadArchivedKeys, saveArchivedKeys, type ArchivedKeys } from './archive'
+import { loadPinnedKeys, savePinnedKeys, type PinnedKeys } from './pinned'
 import { loadTicketSessions, saveTicketSessions, type TicketSessionMap } from './ticketSessions'
 import { listProjectSubdirs } from './projectDirs'
 import { loadNotes, saveNotes } from './notes'
@@ -85,6 +86,12 @@ app.whenReady().then(() => {
 
   ipcMain.handle('archive:save', (_event, keys: ArchivedKeys) => {
     saveArchivedKeys(keys)
+  })
+
+  ipcMain.handle('pinned:get', () => loadPinnedKeys())
+
+  ipcMain.handle('pinned:save', (_event, keys: PinnedKeys) => {
+    savePinnedKeys(keys)
   })
 
   ipcMain.handle('ticketSession:get', () => loadTicketSessions())

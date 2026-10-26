@@ -8,7 +8,8 @@ import type {
   ChatHistoryEntry,
   PriorityMap,
   ArchivedKeys,
-  TicketSessionMap
+  TicketSessionMap,
+  PinnedKeys
 } from '../shared/types'
 
 export type {
@@ -20,7 +21,8 @@ export type {
   ChatHistoryEntry,
   PriorityMap,
   ArchivedKeys,
-  TicketSessionMap
+  TicketSessionMap,
+  PinnedKeys
 }
 
 function subscribe<Args extends unknown[]>(
@@ -52,6 +54,8 @@ const api = {
     ipcRenderer.invoke('priority:save', order),
   getArchivedKeys: (): Promise<ArchivedKeys> => ipcRenderer.invoke('archive:get'),
   saveArchivedKeys: (keys: ArchivedKeys): Promise<void> => ipcRenderer.invoke('archive:save', keys),
+  getPinnedKeys: (): Promise<PinnedKeys> => ipcRenderer.invoke('pinned:get'),
+  savePinnedKeys: (keys: PinnedKeys): Promise<void> => ipcRenderer.invoke('pinned:save', keys),
   getTicketSessions: (): Promise<TicketSessionMap> => ipcRenderer.invoke('ticketSession:get'),
   saveTicketSessions: (map: TicketSessionMap): Promise<void> =>
     ipcRenderer.invoke('ticketSession:save', map),

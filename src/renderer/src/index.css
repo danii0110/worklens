@@ -329,6 +329,19 @@ body,
   margin-bottom: 0;
 }
 
+.pinned-group {
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pinned-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
 .view-toggle {
   display: flex;
   margin-bottom: 14px;
