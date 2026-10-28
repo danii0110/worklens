@@ -501,14 +501,14 @@ function App() {
         <div className="issue-actions">
           {ticketSessions[issue.key] ? (
             <button
-              className="btn-ghost issue-action-btn"
+              className="issue-primary-btn"
               onClick={() => handleOpenSession(resolveSessionObject(ticketSessions[issue.key]))}
             >
               이어하기
             </button>
           ) : projectSubdirs.length > 0 ? (
             <select
-              className="field subdir-select"
+              className="issue-primary-btn subdir-select"
               value=""
               disabled={!defaultProjectPath}
               title={
@@ -536,7 +536,7 @@ function App() {
             </select>
           ) : (
             <button
-              className="btn-ghost issue-action-btn"
+              className="issue-primary-btn"
               onClick={() => handleStartNewSessionForTicket(issue.key, issue.summary)}
               disabled={!defaultProjectPath}
               title={
@@ -546,12 +546,14 @@ function App() {
               새로하기
             </button>
           )}
-          <button className="archive-btn" onClick={() => togglePin(issue.key)}>
-            {pinnedKeySet.has(issue.key) ? '고정 해제' : '고정'}
-          </button>
-          <button className="archive-btn" onClick={() => toggleArchive(issue.key)}>
-            {viewMode === 'archived' ? '꺼내기' : '보관'}
-          </button>
+          <div className="issue-actions-secondary">
+            <button className="archive-btn" onClick={() => togglePin(issue.key)}>
+              {pinnedKeySet.has(issue.key) ? '고정 해제' : '고정'}
+            </button>
+            <button className="archive-btn" onClick={() => toggleArchive(issue.key)}>
+              {viewMode === 'archived' ? '꺼내기' : '보관'}
+            </button>
+          </div>
           {issue.dueDate && (
             <span className={`due-date due-date-${dueDateClass}`}>{issue.dueDate}</span>
           )}

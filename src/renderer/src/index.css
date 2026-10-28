@@ -457,14 +457,20 @@ body,
   background: transparent;
   color: var(--text-muted);
   border-radius: 8px;
-  padding: 4px 12px;
-  font-size: 12px;
+  padding: 4px 10px;
+  font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
 }
 .archive-btn:hover {
   background: var(--border);
   color: var(--text);
+}
+
+.issue-actions-secondary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .issue-title-group {
@@ -495,16 +501,27 @@ body,
   gap: 6px;
 }
 
-.issue-action-btn {
-  padding: 4px 12px;
+.issue-primary-btn {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  padding: 5px 12px;
   font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.issue-primary-btn:hover {
+  opacity: 0.9;
+}
+.issue-primary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .subdir-select {
   width: 68px;
-  padding: 4px 8px;
-  font-size: 12px;
-  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -532,24 +549,18 @@ body,
 }
 
 .due-date {
+  margin-left: auto;
   font-size: 12px;
-  font-weight: 600;
   white-space: nowrap;
-  padding: 3px 9px;
-  border-radius: 999px;
+  color: var(--text-muted);
 }
 .due-date-overdue {
   color: var(--danger);
-  background: var(--danger-bg);
+  font-weight: 700;
 }
 .due-date-soon {
   color: var(--warning);
-  background: var(--warning-bg);
-}
-.due-date-normal {
-  color: var(--text-muted);
-  background: var(--bg);
-  font-weight: 400;
+  font-weight: 700;
 }
 
 .session-list {
