@@ -6,7 +6,6 @@ const POLL_INTERVAL_MS = 5 * 60 * 1000
 const RECENTLY_ACTIVE_THRESHOLD_MS = 2 * 60 * 1000
 const TICKETS_TAB = 'tickets'
 const NOTES_SAVE_DEBOUNCE_MS = 500
-const BASE_PATH_OPTION = '__base__'
 
 type JiraIssue = Awaited<ReturnType<typeof window.api.fetchMyIssues>>[number]
 type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[number]
@@ -506,34 +505,27 @@ function App() {
             >
               이어하기
             </button>
-          ) : projectSubdirs.length > 0 ? (
-            <select
-              className="issue-primary-btn subdir-select"
-              value=""
-              disabled={!defaultProjectPath}
-              title={
-                defaultProjectPath ? undefined : '설정에서 기본 프로젝트 경로를 먼저 지정하세요'
-              }
-              onChange={(e) => {
-                const value = e.target.value
-                if (!value) return
-                handleStartNewSessionForTicket(
-                  issue.key,
-                  issue.summary,
-                  value === BASE_PATH_OPTION ? undefined : value
-                )
-              }}
-            >
-              <option value="" disabled>
-                새로하기
-              </option>
-              <option value={BASE_PATH_OPTION}>기본 경로에서 시작</option>
-              {projectSubdirs.map((dir) => (
-                <option key={dir} value={dir}>
-                  {dir}에서 시작
-                </option>
-              ))}
-            </select>
+          ) : projectSubdirs.length > 0 && defaultProjectPath ? (
+            <div className="issue-new-session-dropdown">
+              <button className="issue-primary-btn">새로하기</button>
+              <div className="issue-new-session-menu">
+                <button
+                  className="issue-new-session-option"
+                  onClick={() => handleStartNewSessionForTicket(issue.key, issue.summary)}
+                >
+                  기본 경로에서 시작
+                </button>
+                {projectSubdirs.map((dir) => (
+                  <button
+                    key={dir}
+                    className="issue-new-session-option"
+                    onClick={() => handleStartNewSessionForTicket(issue.key, issue.summary, dir)}
+                  >
+                    {dir}에서 시작
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : (
             <button
               className="issue-primary-btn"
