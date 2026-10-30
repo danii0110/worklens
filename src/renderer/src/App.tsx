@@ -6,6 +6,9 @@ const POLL_INTERVAL_MS = 5 * 60 * 1000
 const RECENTLY_ACTIVE_THRESHOLD_MS = 2 * 60 * 1000
 const TICKETS_TAB = 'tickets'
 const NOTES_SAVE_DEBOUNCE_MS = 500
+const QA_REQUESTABLE_STATUS = '개발완료'
+
+type ViewMode = 'active' | 'deployPending' | 'qaRequested' | 'archived'
 
 type JiraIssue = Awaited<ReturnType<typeof window.api.fetchMyIssues>>[number]
 type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[number]
@@ -13,6 +16,8 @@ type ClaudeSession = Awaited<ReturnType<typeof window.api.listClaudeSessions>>[n
 type PriorityMap = Awaited<ReturnType<typeof window.api.getPriorityOrder>>
 type ArchivedKeys = Awaited<ReturnType<typeof window.api.getArchivedKeys>>
 type PinnedKeys = Awaited<ReturnType<typeof window.api.getPinnedKeys>>
+type DeployPendingKeys = Awaited<ReturnType<typeof window.api.getDeployPendingKeys>>
+type QaRequestedKeys = Awaited<ReturnType<typeof window.api.getQaRequestedKeys>>
 type TicketSessionMap = Awaited<ReturnType<typeof window.api.getTicketSessions>>
 
 interface OpenTab {
@@ -133,7 +138,9 @@ function App() {
   const [dragOverKey, setDragOverKey] = useState<string | null>(null)
   const [archivedKeys, setArchivedKeys] = useState<ArchivedKeys>([])
   const [pinnedKeys, setPinnedKeys] = useState<PinnedKeys>([])
-  const [viewMode, setViewMode] = useState<'active' | 'archived'>('active')
+  const [deployPendingKeys, setDeployPendingKeys] = useState<DeployPendingKeys>([])
+  const [qaRequestedKeys, setQaRequestedKeys] = useState<QaRequestedKeys>([])
+  const [viewMode, setViewMode] = useState<ViewMode>('active')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [ticketSessions, setTicketSessions] = useState<TicketSessionMap>({})
   const [projectSubdirs, setProjectSubdirs] = useState<string[]>([])
@@ -146,6 +153,8 @@ function App() {
     window.api.getPriorityOrder().then(setPriorityMap)
     window.api.getArchivedKeys().then(setArchivedKeys)
     window.api.getPinnedKeys().then(setPinnedKeys)
+    window.api.getDeployPendingKeys().then(setDeployPendingKeys)
+    window.api.getQaRequestedKeys().then(setQaRequestedKeys)
     window.api.getTicketSessions().then(setTicketSessions)
     window.api.listProjectSubdirs().then(setProjectSubdirs)
     window.api.getNotes().then(setNotes)
@@ -159,7 +168,7 @@ function App() {
     }, NOTES_SAVE_DEBOUNCE_MS)
   }
 
-  function selectViewMode(mode: 'active' | 'archived'): void {
+  function selectViewMode(mode: ViewMode): void {
     setViewMode(mode)
     setStatusFilter(null)
   }
@@ -168,7 +177,25 @@ function App() {
     if (searchQuery.trim()) return '검색 결과가 없습니다.'
     if (statusFilter) return '해당 상태의 티켓이 없습니다.'
     if (viewMode === 'archived') return '보관한 티켓이 없습니다.'
+    if (viewMode === 'deployPending') return '배포 대기 중인 티켓이 없습니다.'
+    if (viewMode === 'qaRequested') return 'QA 요청한 티켓이 없습니다.'
     return '표시할 티켓이 없습니다.'
+  }
+
+  function toggleDeployPending(issueKey: string): void {
+    const next = deployPendingKeys.includes(issueKey)
+      ? deployPendingKeys.filter((key) => key !== issueKey)
+      : [...deployPendingKeys, issueKey]
+    setDeployPendingKeys(next)
+    window.api.saveDeployPendingKeys(next)
+  }
+
+  function toggleQaRequested(issueKey: string): void {
+    const next = qaRequestedKeys.includes(issueKey)
+      ? qaRequestedKeys.filter((key) => key !== issueKey)
+      : [...qaRequestedKeys, issueKey]
+    setQaRequestedKeys(next)
+    window.api.saveQaRequestedKeys(next)
   }
 
   function toggleArchive(issueKey: string): void {
@@ -392,15 +419,34 @@ function App() {
     [comments]
   )
   const archivedKeySet = useMemo(() => new Set(archivedKeys), [archivedKeys])
-  const { activeIssues, archivedIssues } = useMemo(() => {
+  const deployPendingKeySet = useMemo(() => new Set(deployPendingKeys), [deployPendingKeys])
+  const qaRequestedKeySet = useMemo(() => new Set(qaRequestedKeys), [qaRequestedKeys])
+  const { activeIssues, deployPendingIssues, qaRequestedIssues, archivedIssues } = useMemo(() => {
     const active: JiraIssue[] = []
+    const deployPending: JiraIssue[] = []
+    const qaRequested: JiraIssue[] = []
     const archived: JiraIssue[] = []
     for (const issue of issues) {
-      ;(archivedKeySet.has(issue.key) ? archived : active).push(issue)
+      if (archivedKeySet.has(issue.key)) archived.push(issue)
+      else if (deployPendingKeySet.has(issue.key)) deployPending.push(issue)
+      else if (qaRequestedKeySet.has(issue.key)) qaRequested.push(issue)
+      else active.push(issue)
     }
-    return { activeIssues: active, archivedIssues: archived }
-  }, [issues, archivedKeySet])
-  const visibleIssues = viewMode === 'archived' ? archivedIssues : activeIssues
+    return {
+      activeIssues: active,
+      deployPendingIssues: deployPending,
+      qaRequestedIssues: qaRequested,
+      archivedIssues: archived
+    }
+  }, [issues, archivedKeySet, deployPendingKeySet, qaRequestedKeySet])
+  const visibleIssues =
+    viewMode === 'archived'
+      ? archivedIssues
+      : viewMode === 'deployPending'
+        ? deployPendingIssues
+        : viewMode === 'qaRequested'
+          ? qaRequestedIssues
+          : activeIssues
   const filteredIssues = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
     let result = visibleIssues
@@ -492,9 +538,21 @@ function App() {
           </div>
         </div>
         {comment && (
-          <div className="issue-comment">
-            💬 <strong>{comment.author}</strong> {comment.body}
-            <span className="meta"> · {formatRelativeTime(comment.created)}</span>
+          <div className="issue-comment-wrapper">
+            <div className="issue-comment">
+              💬 <strong>{comment.author}</strong> {comment.body}
+              <span className="meta"> · {formatRelativeTime(comment.created)}</span>
+            </div>
+            {comment.allComments.length > 1 && (
+              <div className="issue-comment-history">
+                {comment.allComments.map((entry) => (
+                  <div key={entry.created} className="issue-comment-history-entry">
+                    <strong>{entry.author}</strong> {entry.body}
+                    <span className="meta"> · {formatRelativeTime(entry.created)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         <div className="issue-actions">
@@ -542,8 +600,17 @@ function App() {
             <button className="archive-btn" onClick={() => togglePin(issue.key)}>
               {pinnedKeySet.has(issue.key) ? '고정 해제' : '고정'}
             </button>
+            {(normalizeStatus(issue.status) === QA_REQUESTABLE_STATUS ||
+              qaRequestedKeySet.has(issue.key)) && (
+              <button className="archive-btn" onClick={() => toggleQaRequested(issue.key)}>
+                {qaRequestedKeySet.has(issue.key) ? 'QA 요청 해제' : 'QA 요청'}
+              </button>
+            )}
+            <button className="archive-btn" onClick={() => toggleDeployPending(issue.key)}>
+              {deployPendingKeySet.has(issue.key) ? '배포대기 해제' : '배포대기'}
+            </button>
             <button className="archive-btn" onClick={() => toggleArchive(issue.key)}>
-              {viewMode === 'archived' ? '꺼내기' : '보관'}
+              {archivedKeySet.has(issue.key) ? '꺼내기' : '보관'}
             </button>
           </div>
           {issue.dueDate && (
@@ -761,13 +828,25 @@ function App() {
                   className={`view-toggle-btn ${viewMode === 'active' ? 'view-toggle-active' : ''}`}
                   onClick={() => selectViewMode('active')}
                 >
-                  볼 티켓 {activeIssues.length}
+                  진행 중 {activeIssues.length}
+                </button>
+                <button
+                  className={`view-toggle-btn ${viewMode === 'qaRequested' ? 'view-toggle-active' : ''}`}
+                  onClick={() => selectViewMode('qaRequested')}
+                >
+                  QA 요청 {qaRequestedIssues.length}
+                </button>
+                <button
+                  className={`view-toggle-btn ${viewMode === 'deployPending' ? 'view-toggle-active' : ''}`}
+                  onClick={() => selectViewMode('deployPending')}
+                >
+                  배포대기 {deployPendingIssues.length}
                 </button>
                 <button
                   className={`view-toggle-btn ${viewMode === 'archived' ? 'view-toggle-active' : ''}`}
                   onClick={() => selectViewMode('archived')}
                 >
-                  보관함 {archivedIssues.length}
+                  보관 {archivedIssues.length}
                 </button>
               </div>
 

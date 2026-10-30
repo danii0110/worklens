@@ -14,13 +14,17 @@ export interface JiraIssue {
   url: string
 }
 
-export interface RecentComment {
-  issueKey: string
-  issueSummary: string
+export interface CommentEntry {
   author: string
   body: string
   created: string
+}
+
+export interface RecentComment extends CommentEntry {
+  issueKey: string
+  issueSummary: string
   url: string
+  allComments: CommentEntry[]
 }
 
 export interface ClaudeSession {
@@ -36,6 +40,10 @@ export type PriorityMap = Record<string, string[]>
 export type ArchivedKeys = string[]
 
 export type PinnedKeys = string[]
+
+export type DeployPendingKeys = string[]
+
+export type QaRequestedKeys = string[]
 
 export type TicketSessionMap = Record<string, string>
 

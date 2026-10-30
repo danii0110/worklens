@@ -6,6 +6,12 @@ import { listClaudeSessions, renameClaudeSession } from './claudeSessions'
 import { loadPriorityOrder, savePriorityOrder, type PriorityMap } from './priorities'
 import { loadArchivedKeys, saveArchivedKeys, type ArchivedKeys } from './archive'
 import { loadPinnedKeys, savePinnedKeys, type PinnedKeys } from './pinned'
+import {
+  loadDeployPendingKeys,
+  saveDeployPendingKeys,
+  type DeployPendingKeys
+} from './deployPending'
+import { loadQaRequestedKeys, saveQaRequestedKeys, type QaRequestedKeys } from './qaRequested'
 import { loadTicketSessions, saveTicketSessions, type TicketSessionMap } from './ticketSessions'
 import { listProjectSubdirs } from './projectDirs'
 import { loadNotes, saveNotes } from './notes'
@@ -92,6 +98,18 @@ app.whenReady().then(() => {
 
   ipcMain.handle('pinned:save', (_event, keys: PinnedKeys) => {
     savePinnedKeys(keys)
+  })
+
+  ipcMain.handle('deployPending:get', () => loadDeployPendingKeys())
+
+  ipcMain.handle('deployPending:save', (_event, keys: DeployPendingKeys) => {
+    saveDeployPendingKeys(keys)
+  })
+
+  ipcMain.handle('qaRequested:get', () => loadQaRequestedKeys())
+
+  ipcMain.handle('qaRequested:save', (_event, keys: QaRequestedKeys) => {
+    saveQaRequestedKeys(keys)
   })
 
   ipcMain.handle('ticketSession:get', () => loadTicketSessions())

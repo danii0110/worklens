@@ -9,7 +9,9 @@ import type {
   PriorityMap,
   ArchivedKeys,
   TicketSessionMap,
-  PinnedKeys
+  PinnedKeys,
+  DeployPendingKeys,
+  QaRequestedKeys
 } from '../shared/types'
 
 export type {
@@ -22,7 +24,9 @@ export type {
   PriorityMap,
   ArchivedKeys,
   TicketSessionMap,
-  PinnedKeys
+  PinnedKeys,
+  DeployPendingKeys,
+  QaRequestedKeys
 }
 
 function subscribe<Args extends unknown[]>(
@@ -56,6 +60,12 @@ const api = {
   saveArchivedKeys: (keys: ArchivedKeys): Promise<void> => ipcRenderer.invoke('archive:save', keys),
   getPinnedKeys: (): Promise<PinnedKeys> => ipcRenderer.invoke('pinned:get'),
   savePinnedKeys: (keys: PinnedKeys): Promise<void> => ipcRenderer.invoke('pinned:save', keys),
+  getDeployPendingKeys: (): Promise<DeployPendingKeys> => ipcRenderer.invoke('deployPending:get'),
+  saveDeployPendingKeys: (keys: DeployPendingKeys): Promise<void> =>
+    ipcRenderer.invoke('deployPending:save', keys),
+  getQaRequestedKeys: (): Promise<QaRequestedKeys> => ipcRenderer.invoke('qaRequested:get'),
+  saveQaRequestedKeys: (keys: QaRequestedKeys): Promise<void> =>
+    ipcRenderer.invoke('qaRequested:save', keys),
   getTicketSessions: (): Promise<TicketSessionMap> => ipcRenderer.invoke('ticketSession:get'),
   saveTicketSessions: (map: TicketSessionMap): Promise<void> =>
     ipcRenderer.invoke('ticketSession:save', map),

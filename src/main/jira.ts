@@ -73,28 +73,32 @@ export async function fetchMyIssues(config: JiraConfig): Promise<JiraIssue[]> {
   }))
 }
 
-async function fetchLatestComment(
+async function fetchIssueComments(
   config: JiraConfig,
   issue: JiraIssue
 ): Promise<RecentComment | null> {
   const { baseUrl, headers } = getAuthContext(config)
   const res = await fetch(
-    `${baseUrl}/rest/api/3/issue/${issue.key}/comment?orderBy=-created&maxResults=1`,
+    `${baseUrl}/rest/api/3/issue/${issue.key}/comment?orderBy=-created&maxResults=50`,
     { headers }
   )
   if (!res.ok) return null
 
   const data: JiraCommentApiResponse = await res.json()
-  const latest = data.comments[0]
+  const allComments = data.comments.map((comment) => ({
+    author: comment.author?.displayName ?? '알 수 없음',
+    body: extractPlainText(comment.body).slice(0, 140),
+    created: comment.created
+  }))
+  const latest = allComments[0]
   if (!latest) return null
 
   return {
     issueKey: issue.key,
     issueSummary: issue.summary,
-    author: latest.author?.displayName ?? '알 수 없음',
-    body: extractPlainText(latest.body).slice(0, 140),
-    created: latest.created,
-    url: issue.url
+    url: issue.url,
+    allComments,
+    ...latest
   }
 }
 
@@ -102,6 +106,6 @@ export async function fetchRecentComments(
   config: JiraConfig,
   issues: JiraIssue[]
 ): Promise<RecentComment[]> {
-  const results = await Promise.all(issues.map((issue) => fetchLatestComment(config, issue)))
+  const results = await Promise.all(issues.map((issue) => fetchIssueComments(config, issue)))
   return results.filter((comment): comment is RecentComment => comment !== null)
 }
