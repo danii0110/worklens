@@ -478,6 +478,32 @@ body,
   min-width: 0;
 }
 
+.issue-memo {
+  flex-shrink: 0;
+  width: 150px;
+  padding: 4px 9px;
+  border: none;
+  border-radius: 4px;
+  background: #fff3b0;
+  color: #5c4a14;
+  font-size: 12px;
+  font-weight: 600;
+  transform: rotate(-1.5deg);
+  transition: transform 0.1s ease;
+}
+.issue-memo::placeholder {
+  color: #a3903f;
+  font-weight: 400;
+}
+.issue-memo:hover {
+  transform: rotate(0deg);
+}
+.issue-memo:focus {
+  transform: rotate(0deg);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .issue-comment-wrapper {
   position: relative;
 }

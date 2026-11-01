@@ -13,6 +13,7 @@ import {
 } from './deployPending'
 import { loadQaRequestedKeys, saveQaRequestedKeys, type QaRequestedKeys } from './qaRequested'
 import { loadTicketSessions, saveTicketSessions, type TicketSessionMap } from './ticketSessions'
+import { loadTicketMemos, saveTicketMemos, type TicketMemoMap } from './ticketMemos'
 import { listProjectSubdirs } from './projectDirs'
 import { loadNotes, saveNotes } from './notes'
 import { registerChatHandlers } from './chat'
@@ -116,6 +117,12 @@ app.whenReady().then(() => {
 
   ipcMain.handle('ticketSession:save', (_event, map: TicketSessionMap) => {
     saveTicketSessions(map)
+  })
+
+  ipcMain.handle('ticketMemo:get', () => loadTicketMemos())
+
+  ipcMain.handle('ticketMemo:save', (_event, map: TicketMemoMap) => {
+    saveTicketMemos(map)
   })
 
   ipcMain.handle('project:listSubdirs', () => {

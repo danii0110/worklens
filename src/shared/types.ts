@@ -47,6 +47,8 @@ export type QaRequestedKeys = string[]
 
 export type TicketSessionMap = Record<string, string>
 
+export type TicketMemoMap = Record<string, string>
+
 export interface ChatHistoryEntry {
   role: 'user' | 'assistant' | 'tool'
   text: string

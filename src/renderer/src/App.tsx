@@ -19,6 +19,7 @@ type PinnedKeys = Awaited<ReturnType<typeof window.api.getPinnedKeys>>
 type DeployPendingKeys = Awaited<ReturnType<typeof window.api.getDeployPendingKeys>>
 type QaRequestedKeys = Awaited<ReturnType<typeof window.api.getQaRequestedKeys>>
 type TicketSessionMap = Awaited<ReturnType<typeof window.api.getTicketSessions>>
+type TicketMemoMap = Awaited<ReturnType<typeof window.api.getTicketMemos>>
 
 interface OpenTab {
   tabId: string
@@ -143,6 +144,7 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('active')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [ticketSessions, setTicketSessions] = useState<TicketSessionMap>({})
+  const [ticketMemos, setTicketMemos] = useState<TicketMemoMap>({})
   const [projectSubdirs, setProjectSubdirs] = useState<string[]>([])
   const [toasts, setToasts] = useState<{ id: string; text: string }[]>([])
   const [notes, setNotes] = useState('')
@@ -156,6 +158,7 @@ function App() {
     window.api.getDeployPendingKeys().then(setDeployPendingKeys)
     window.api.getQaRequestedKeys().then(setQaRequestedKeys)
     window.api.getTicketSessions().then(setTicketSessions)
+    window.api.getTicketMemos().then(setTicketMemos)
     window.api.listProjectSubdirs().then(setProjectSubdirs)
     window.api.getNotes().then(setNotes)
   }, [])
@@ -196,6 +199,14 @@ function App() {
       : [...qaRequestedKeys, issueKey]
     setQaRequestedKeys(next)
     window.api.saveQaRequestedKeys(next)
+  }
+
+  function setMemo(issueKey: string, text: string): void {
+    setTicketMemos((prev) => ({ ...prev, [issueKey]: text }))
+  }
+
+  function commitMemos(): void {
+    window.api.saveTicketMemos(ticketMemos)
   }
 
   function toggleArchive(issueKey: string): void {
@@ -536,6 +547,16 @@ function App() {
             </a>{' '}
             <span className="issue-summary">{issue.summary}</span>
           </div>
+          <input
+            className="issue-memo"
+            placeholder="메모"
+            value={ticketMemos[issue.key] ?? ''}
+            onChange={(e) => setMemo(issue.key, e.target.value)}
+            onBlur={commitMemos}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) e.currentTarget.blur()
+            }}
+          />
         </div>
         {comment && (
           <div className="issue-comment-wrapper">
