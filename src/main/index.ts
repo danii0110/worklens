@@ -12,6 +12,7 @@ import {
   type DeployPendingKeys
 } from './deployPending'
 import { loadQaRequestedKeys, saveQaRequestedKeys, type QaRequestedKeys } from './qaRequested'
+import { loadPendingReplyKeys, savePendingReplyKeys, type PendingReplyKeys } from './pendingReply'
 import { loadTicketSessions, saveTicketSessions, type TicketSessionMap } from './ticketSessions'
 import { loadTicketMemos, saveTicketMemos, type TicketMemoMap } from './ticketMemos'
 import { listProjectSubdirs } from './projectDirs'
@@ -111,6 +112,12 @@ app.whenReady().then(() => {
 
   ipcMain.handle('qaRequested:save', (_event, keys: QaRequestedKeys) => {
     saveQaRequestedKeys(keys)
+  })
+
+  ipcMain.handle('pendingReply:get', () => loadPendingReplyKeys())
+
+  ipcMain.handle('pendingReply:save', (_event, keys: PendingReplyKeys) => {
+    savePendingReplyKeys(keys)
   })
 
   ipcMain.handle('ticketSession:get', () => loadTicketSessions())

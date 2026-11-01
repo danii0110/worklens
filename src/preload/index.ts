@@ -12,7 +12,8 @@ import type {
   PinnedKeys,
   DeployPendingKeys,
   QaRequestedKeys,
-  TicketMemoMap
+  TicketMemoMap,
+  PendingReplyKeys
 } from '../shared/types'
 
 export type {
@@ -28,7 +29,8 @@ export type {
   PinnedKeys,
   DeployPendingKeys,
   QaRequestedKeys,
-  TicketMemoMap
+  TicketMemoMap,
+  PendingReplyKeys
 }
 
 function subscribe<Args extends unknown[]>(
@@ -68,6 +70,9 @@ const api = {
   getQaRequestedKeys: (): Promise<QaRequestedKeys> => ipcRenderer.invoke('qaRequested:get'),
   saveQaRequestedKeys: (keys: QaRequestedKeys): Promise<void> =>
     ipcRenderer.invoke('qaRequested:save', keys),
+  getPendingReplyKeys: (): Promise<PendingReplyKeys> => ipcRenderer.invoke('pendingReply:get'),
+  savePendingReplyKeys: (keys: PendingReplyKeys): Promise<void> =>
+    ipcRenderer.invoke('pendingReply:save', keys),
   getTicketSessions: (): Promise<TicketSessionMap> => ipcRenderer.invoke('ticketSession:get'),
   saveTicketSessions: (map: TicketSessionMap): Promise<void> =>
     ipcRenderer.invoke('ticketSession:save', map),

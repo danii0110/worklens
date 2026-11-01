@@ -8,7 +8,7 @@ const TICKETS_TAB = 'tickets'
 const NOTES_SAVE_DEBOUNCE_MS = 500
 const QA_REQUESTABLE_STATUS = '개발완료'
 
-type ViewMode = 'active' | 'deployPending' | 'qaRequested' | 'archived'
+type ViewMode = 'active' | 'deployPending' | 'pendingConfirmation' | 'archived'
 
 type JiraIssue = Awaited<ReturnType<typeof window.api.fetchMyIssues>>[number]
 type RecentComment = Awaited<ReturnType<typeof window.api.fetchRecentComments>>[number]
@@ -18,6 +18,7 @@ type ArchivedKeys = Awaited<ReturnType<typeof window.api.getArchivedKeys>>
 type PinnedKeys = Awaited<ReturnType<typeof window.api.getPinnedKeys>>
 type DeployPendingKeys = Awaited<ReturnType<typeof window.api.getDeployPendingKeys>>
 type QaRequestedKeys = Awaited<ReturnType<typeof window.api.getQaRequestedKeys>>
+type PendingReplyKeys = Awaited<ReturnType<typeof window.api.getPendingReplyKeys>>
 type TicketSessionMap = Awaited<ReturnType<typeof window.api.getTicketSessions>>
 type TicketMemoMap = Awaited<ReturnType<typeof window.api.getTicketMemos>>
 
@@ -141,6 +142,7 @@ function App() {
   const [pinnedKeys, setPinnedKeys] = useState<PinnedKeys>([])
   const [deployPendingKeys, setDeployPendingKeys] = useState<DeployPendingKeys>([])
   const [qaRequestedKeys, setQaRequestedKeys] = useState<QaRequestedKeys>([])
+  const [pendingReplyKeys, setPendingReplyKeys] = useState<PendingReplyKeys>([])
   const [viewMode, setViewMode] = useState<ViewMode>('active')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [ticketSessions, setTicketSessions] = useState<TicketSessionMap>({})
@@ -157,6 +159,7 @@ function App() {
     window.api.getPinnedKeys().then(setPinnedKeys)
     window.api.getDeployPendingKeys().then(setDeployPendingKeys)
     window.api.getQaRequestedKeys().then(setQaRequestedKeys)
+    window.api.getPendingReplyKeys().then(setPendingReplyKeys)
     window.api.getTicketSessions().then(setTicketSessions)
     window.api.getTicketMemos().then(setTicketMemos)
     window.api.listProjectSubdirs().then(setProjectSubdirs)
@@ -181,7 +184,7 @@ function App() {
     if (statusFilter) return '해당 상태의 티켓이 없습니다.'
     if (viewMode === 'archived') return '보관한 티켓이 없습니다.'
     if (viewMode === 'deployPending') return '배포 대기 중인 티켓이 없습니다.'
-    if (viewMode === 'qaRequested') return 'QA 요청한 티켓이 없습니다.'
+    if (viewMode === 'pendingConfirmation') return '답변 대기/QA 요청한 티켓이 없습니다.'
     return '표시할 티켓이 없습니다.'
   }
 
@@ -199,6 +202,14 @@ function App() {
       : [...qaRequestedKeys, issueKey]
     setQaRequestedKeys(next)
     window.api.saveQaRequestedKeys(next)
+  }
+
+  function togglePendingReply(issueKey: string): void {
+    const next = pendingReplyKeys.includes(issueKey)
+      ? pendingReplyKeys.filter((key) => key !== issueKey)
+      : [...pendingReplyKeys, issueKey]
+    setPendingReplyKeys(next)
+    window.api.savePendingReplyKeys(next)
   }
 
   function setMemo(issueKey: string, text: string): void {
@@ -432,31 +443,34 @@ function App() {
   const archivedKeySet = useMemo(() => new Set(archivedKeys), [archivedKeys])
   const deployPendingKeySet = useMemo(() => new Set(deployPendingKeys), [deployPendingKeys])
   const qaRequestedKeySet = useMemo(() => new Set(qaRequestedKeys), [qaRequestedKeys])
-  const { activeIssues, deployPendingIssues, qaRequestedIssues, archivedIssues } = useMemo(() => {
-    const active: JiraIssue[] = []
-    const deployPending: JiraIssue[] = []
-    const qaRequested: JiraIssue[] = []
-    const archived: JiraIssue[] = []
-    for (const issue of issues) {
-      if (archivedKeySet.has(issue.key)) archived.push(issue)
-      else if (deployPendingKeySet.has(issue.key)) deployPending.push(issue)
-      else if (qaRequestedKeySet.has(issue.key)) qaRequested.push(issue)
-      else active.push(issue)
-    }
-    return {
-      activeIssues: active,
-      deployPendingIssues: deployPending,
-      qaRequestedIssues: qaRequested,
-      archivedIssues: archived
-    }
-  }, [issues, archivedKeySet, deployPendingKeySet, qaRequestedKeySet])
+  const pendingReplyKeySet = useMemo(() => new Set(pendingReplyKeys), [pendingReplyKeys])
+  const { activeIssues, deployPendingIssues, pendingConfirmationIssues, archivedIssues } =
+    useMemo(() => {
+      const active: JiraIssue[] = []
+      const deployPending: JiraIssue[] = []
+      const pendingConfirmation: JiraIssue[] = []
+      const archived: JiraIssue[] = []
+      for (const issue of issues) {
+        if (archivedKeySet.has(issue.key)) archived.push(issue)
+        else if (deployPendingKeySet.has(issue.key)) deployPending.push(issue)
+        else if (qaRequestedKeySet.has(issue.key) || pendingReplyKeySet.has(issue.key))
+          pendingConfirmation.push(issue)
+        else active.push(issue)
+      }
+      return {
+        activeIssues: active,
+        deployPendingIssues: deployPending,
+        pendingConfirmationIssues: pendingConfirmation,
+        archivedIssues: archived
+      }
+    }, [issues, archivedKeySet, deployPendingKeySet, qaRequestedKeySet, pendingReplyKeySet])
   const visibleIssues =
     viewMode === 'archived'
       ? archivedIssues
       : viewMode === 'deployPending'
         ? deployPendingIssues
-        : viewMode === 'qaRequested'
-          ? qaRequestedIssues
+        : viewMode === 'pendingConfirmation'
+          ? pendingConfirmationIssues
           : activeIssues
   const filteredIssues = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -486,6 +500,20 @@ function App() {
       ([status, items]) => [status, applyPriorityOrder(status, items, priorityMap)] as const
     )
   }, [restIssues, priorityMap])
+  // 두 플래그를 동시에 가진 티켓은 답변 대기 쪽에만 표시한다(중복 노출 방지).
+  // 그래서 qaRequestedOnlyGroup은 qaRequestedKeySet 전체가 아니라
+  // "QA 요청이면서 답변 대기는 아닌" 티켓만 담는다.
+  const { pendingReplyGroup, qaRequestedOnlyGroup } = useMemo(() => {
+    if (viewMode !== 'pendingConfirmation')
+      return { pendingReplyGroup: [], qaRequestedOnlyGroup: [] }
+    const pendingReply: JiraIssue[] = []
+    const qaRequestedOnly: JiraIssue[] = []
+    for (const issue of restIssues) {
+      if (pendingReplyKeySet.has(issue.key)) pendingReply.push(issue)
+      else qaRequestedOnly.push(issue)
+    }
+    return { pendingReplyGroup: pendingReply, qaRequestedOnlyGroup: qaRequestedOnly }
+  }, [viewMode, restIssues, pendingReplyKeySet])
   const statusSummary = useMemo(() => groupByStatus(visibleIssues), [visibleIssues])
 
   function renderIssueRow(issue: JiraIssue, displayOrder: string[] | null, status: string | null) {
@@ -620,6 +648,9 @@ function App() {
           <div className="issue-actions-secondary">
             <button className="archive-btn" onClick={() => togglePin(issue.key)}>
               {pinnedKeySet.has(issue.key) ? '고정 해제' : '고정'}
+            </button>
+            <button className="archive-btn" onClick={() => togglePendingReply(issue.key)}>
+              {pendingReplyKeySet.has(issue.key) ? '답변 대기 해제' : '답변 대기'}
             </button>
             {(normalizeStatus(issue.status) === QA_REQUESTABLE_STATUS ||
               qaRequestedKeySet.has(issue.key)) && (
@@ -852,10 +883,10 @@ function App() {
                   진행 중 {activeIssues.length}
                 </button>
                 <button
-                  className={`view-toggle-btn ${viewMode === 'qaRequested' ? 'view-toggle-active' : ''}`}
-                  onClick={() => selectViewMode('qaRequested')}
+                  className={`view-toggle-btn ${viewMode === 'pendingConfirmation' ? 'view-toggle-active' : ''}`}
+                  onClick={() => selectViewMode('pendingConfirmation')}
                 >
-                  QA 요청 {qaRequestedIssues.length}
+                  확인 대기 {pendingConfirmationIssues.length}
                 </button>
                 <button
                   className={`view-toggle-btn ${viewMode === 'deployPending' ? 'view-toggle-active' : ''}`}
@@ -900,24 +931,47 @@ function App() {
                 </div>
               )}
 
-              {groupedIssues.map(([status, items]) => (
-                <div key={status} className="status-group">
-                  {!statusFilter && (
-                    <div className="status-group-label">
-                      {status} {items.length}
+              {viewMode === 'pendingConfirmation' ? (
+                <>
+                  {pendingReplyGroup.length > 0 && (
+                    <div className="status-group">
+                      <div className="status-group-label">답변 대기 {pendingReplyGroup.length}</div>
+                      <ul className="issue-list">
+                        {pendingReplyGroup.map((issue) => renderIssueRow(issue, null, null))}
+                      </ul>
                     </div>
                   )}
-                  <ul className="issue-list">
-                    {items.map((issue) =>
-                      renderIssueRow(
-                        issue,
-                        items.map((i) => i.key),
-                        status
-                      )
+                  {qaRequestedOnlyGroup.length > 0 && (
+                    <div className="status-group">
+                      <div className="status-group-label">
+                        QA 요청 {qaRequestedOnlyGroup.length}
+                      </div>
+                      <ul className="issue-list">
+                        {qaRequestedOnlyGroup.map((issue) => renderIssueRow(issue, null, null))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              ) : (
+                groupedIssues.map(([status, items]) => (
+                  <div key={status} className="status-group">
+                    {!statusFilter && (
+                      <div className="status-group-label">
+                        {status} {items.length}
+                      </div>
                     )}
-                  </ul>
-                </div>
-              ))}
+                    <ul className="issue-list">
+                      {items.map((issue) =>
+                        renderIssueRow(
+                          issue,
+                          items.map((i) => i.key),
+                          status
+                        )
+                      )}
+                    </ul>
+                  </div>
+                ))
+              )}
             </section>
           </div>
 
