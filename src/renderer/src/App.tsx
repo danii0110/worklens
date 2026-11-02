@@ -944,7 +944,7 @@ function App() {
                   {qaRequestedOnlyGroup.length > 0 && (
                     <div className="status-group">
                       <div className="status-group-label">
-                        QA 요청 {qaRequestedOnlyGroup.length}
+                        QA 대기 {qaRequestedOnlyGroup.length}
                       </div>
                       <ul className="issue-list">
                         {qaRequestedOnlyGroup.map((issue) => renderIssueRow(issue, null, null))}
