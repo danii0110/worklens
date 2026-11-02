@@ -45,8 +45,19 @@ const CATEGORY_RANK: Record<string, number> = { indeterminate: 0, new: 1, done: 
 
 // Jira가 같은 의미의 상태를 "진행 중"/"진행중"처럼 띄어쓰기만 다르게 반환하는
 // 경우가 있어, 알려진 쌍은 하나로 합쳐서 그룹/필터/칩이 쪼개지지 않게 한다.
+const STATUS_ALIASES = new Map([
+  ['진행중', '진행 중'],
+  ['검수완료', '검수 완료']
+])
+
 function normalizeStatus(status: string): string {
-  return status.replace(/\s+/g, '') === '진행중' ? '진행 중' : status
+  return STATUS_ALIASES.get(status.replace(/\s+/g, '')) ?? status
+}
+
+const REVIEW_COMPLETE_STATUS = '검수 완료'
+
+function toggleFilterValue<T>(current: T | null, value: T): T | null {
+  return current === value ? null : value
 }
 
 function statusRank(status: string, items: JiraIssue[]): number {
@@ -145,13 +156,22 @@ function App() {
   const [pendingReplyKeys, setPendingReplyKeys] = useState<PendingReplyKeys>([])
   const [viewMode, setViewMode] = useState<ViewMode>('active')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [confirmationFilter, setConfirmationFilter] = useState<
+    'pendingReply' | 'qaRequested' | null
+  >(null)
   const [ticketSessions, setTicketSessions] = useState<TicketSessionMap>({})
   const [ticketMemos, setTicketMemos] = useState<TicketMemoMap>({})
   const [projectSubdirs, setProjectSubdirs] = useState<string[]>([])
   const [toasts, setToasts] = useState<{ id: string; text: string }[]>([])
   const [notes, setNotes] = useState('')
   const seenCommentKeysRef = useRef<Set<string> | null>(null)
+  const previousStatusByKeyRef = useRef<Map<string, string> | null>(null)
   const notesSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const archivedKeysRef = useRef<ArchivedKeys>([])
+
+  useEffect(() => {
+    archivedKeysRef.current = archivedKeys
+  }, [archivedKeys])
 
   useEffect(() => {
     window.api.getPriorityOrder().then(setPriorityMap)
@@ -177,6 +197,7 @@ function App() {
   function selectViewMode(mode: ViewMode): void {
     setViewMode(mode)
     setStatusFilter(null)
+    setConfirmationFilter(null)
   }
 
   function emptyStateMessage(): string {
@@ -279,6 +300,34 @@ function App() {
       setIssues(issueResult)
       setComments(commentResult)
       setLastUpdated(new Date())
+
+      // 검수 완료로 "방금 바뀐" 티켓만 배포대기로 자동 이동한다. 매번 전체를
+      // 재검사하면, 사용자가 배포대기에서 수동으로 빼도 상태가 그대로인 한
+      // 다음 폴링 때 계속 다시 들어가 버린다(사용자 의도를 거스름).
+      const previousStatusByKey = previousStatusByKeyRef.current
+      const archivedKeySet = new Set(archivedKeysRef.current)
+      const reviewCompleteKeys = issueResult
+        .filter((issue) => {
+          if (archivedKeySet.has(issue.key)) return false
+          if (normalizeStatus(issue.status) !== REVIEW_COMPLETE_STATUS) return false
+          if (!previousStatusByKey) return true
+          const prevStatus = previousStatusByKey.get(issue.key)
+          return prevStatus === undefined || normalizeStatus(prevStatus) !== REVIEW_COMPLETE_STATUS
+        })
+        .map((issue) => issue.key)
+      previousStatusByKeyRef.current = new Map(
+        issueResult.map((issue) => [issue.key, issue.status])
+      )
+      if (reviewCompleteKeys.length > 0) {
+        setDeployPendingKeys((prev) => {
+          const prevSet = new Set(prev)
+          const toAdd = reviewCompleteKeys.filter((key) => !prevSet.has(key))
+          if (toAdd.length === 0) return prev
+          const next = [...prev, ...toAdd]
+          window.api.saveDeployPendingKeys(next)
+          return next
+        })
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -514,6 +563,14 @@ function App() {
     }
     return { pendingReplyGroup: pendingReply, qaRequestedOnlyGroup: qaRequestedOnly }
   }, [viewMode, restIssues, pendingReplyKeySet])
+  const confirmationSections = useMemo(
+    () =>
+      [
+        { key: 'pendingReply' as const, label: '답변 대기', items: pendingReplyGroup },
+        { key: 'qaRequested' as const, label: 'QA 대기', items: qaRequestedOnlyGroup }
+      ] satisfies Array<{ key: 'pendingReply' | 'qaRequested'; label: string; items: JiraIssue[] }>,
+    [pendingReplyGroup, qaRequestedOnlyGroup]
+  )
   const statusSummary = useMemo(() => groupByStatus(visibleIssues), [visibleIssues])
 
   function renderIssueRow(issue: JiraIssue, displayOrder: string[] | null, status: string | null) {
@@ -908,9 +965,25 @@ function App() {
                     <button
                       key={status}
                       className={`status-summary-chip ${statusFilter === status ? 'status-summary-chip-active' : ''}`}
-                      onClick={() => setStatusFilter((prev) => (prev === status ? null : status))}
+                      onClick={() => setStatusFilter((prev) => toggleFilterValue(prev, status))}
                     >
                       {status} {items.length}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {viewMode === 'pendingConfirmation' && (
+                <div className="status-summary">
+                  {confirmationSections.map((section) => (
+                    <button
+                      key={section.key}
+                      className={`status-summary-chip ${confirmationFilter === section.key ? 'status-summary-chip-active' : ''}`}
+                      onClick={() =>
+                        setConfirmationFilter((prev) => toggleFilterValue(prev, section.key))
+                      }
+                    >
+                      {section.label} {section.items.length}
                     </button>
                   ))}
                 </div>
@@ -934,22 +1007,22 @@ function App() {
               {viewMode === 'pendingConfirmation'
                 ? filteredIssues.length > 0 && (
                     <>
-                      <div className="status-group">
-                        <div className="status-group-label">
-                          답변 대기 {pendingReplyGroup.length}
-                        </div>
-                        <ul className="issue-list">
-                          {pendingReplyGroup.map((issue) => renderIssueRow(issue, null, null))}
-                        </ul>
-                      </div>
-                      <div className="status-group">
-                        <div className="status-group-label">
-                          QA 대기 {qaRequestedOnlyGroup.length}
-                        </div>
-                        <ul className="issue-list">
-                          {qaRequestedOnlyGroup.map((issue) => renderIssueRow(issue, null, null))}
-                        </ul>
-                      </div>
+                      {confirmationSections
+                        .filter(
+                          (section) => !confirmationFilter || confirmationFilter === section.key
+                        )
+                        .map((section) => (
+                          <div key={section.key} className="status-group">
+                            {!confirmationFilter && (
+                              <div className="status-group-label">
+                                {section.label} {section.items.length}
+                              </div>
+                            )}
+                            <ul className="issue-list">
+                              {section.items.map((issue) => renderIssueRow(issue, null, null))}
+                            </ul>
+                          </div>
+                        ))}
                     </>
                   )
                 : groupedIssues.map(([status, items]) => (
