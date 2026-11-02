@@ -931,47 +931,45 @@ function App() {
                 </div>
               )}
 
-              {viewMode === 'pendingConfirmation' ? (
-                <>
-                  {pendingReplyGroup.length > 0 && (
-                    <div className="status-group">
-                      <div className="status-group-label">답변 대기 {pendingReplyGroup.length}</div>
-                      <ul className="issue-list">
-                        {pendingReplyGroup.map((issue) => renderIssueRow(issue, null, null))}
-                      </ul>
-                    </div>
-                  )}
-                  {qaRequestedOnlyGroup.length > 0 && (
-                    <div className="status-group">
-                      <div className="status-group-label">
-                        QA 대기 {qaRequestedOnlyGroup.length}
+              {viewMode === 'pendingConfirmation'
+                ? filteredIssues.length > 0 && (
+                    <>
+                      <div className="status-group">
+                        <div className="status-group-label">
+                          답변 대기 {pendingReplyGroup.length}
+                        </div>
+                        <ul className="issue-list">
+                          {pendingReplyGroup.map((issue) => renderIssueRow(issue, null, null))}
+                        </ul>
                       </div>
-                      <ul className="issue-list">
-                        {qaRequestedOnlyGroup.map((issue) => renderIssueRow(issue, null, null))}
-                      </ul>
-                    </div>
-                  )}
-                </>
-              ) : (
-                groupedIssues.map(([status, items]) => (
-                  <div key={status} className="status-group">
-                    {!statusFilter && (
-                      <div className="status-group-label">
-                        {status} {items.length}
+                      <div className="status-group">
+                        <div className="status-group-label">
+                          QA 대기 {qaRequestedOnlyGroup.length}
+                        </div>
+                        <ul className="issue-list">
+                          {qaRequestedOnlyGroup.map((issue) => renderIssueRow(issue, null, null))}
+                        </ul>
                       </div>
-                    )}
-                    <ul className="issue-list">
-                      {items.map((issue) =>
-                        renderIssueRow(
-                          issue,
-                          items.map((i) => i.key),
-                          status
-                        )
+                    </>
+                  )
+                : groupedIssues.map(([status, items]) => (
+                    <div key={status} className="status-group">
+                      {!statusFilter && (
+                        <div className="status-group-label">
+                          {status} {items.length}
+                        </div>
                       )}
-                    </ul>
-                  </div>
-                ))
-              )}
+                      <ul className="issue-list">
+                        {items.map((issue) =>
+                          renderIssueRow(
+                            issue,
+                            items.map((i) => i.key),
+                            status
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  ))}
             </section>
           </div>
 
