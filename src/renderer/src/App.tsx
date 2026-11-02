@@ -7,6 +7,8 @@ const RECENTLY_ACTIVE_THRESHOLD_MS = 2 * 60 * 1000
 const TICKETS_TAB = 'tickets'
 const NOTES_SAVE_DEBOUNCE_MS = 500
 const QA_REQUESTABLE_STATUS = '개발완료'
+const DRAG_AUTOSCROLL_EDGE_PX = 60
+const DRAG_AUTOSCROLL_MAX_SPEED_PX = 18
 
 type ViewMode = 'active' | 'deployPending' | 'pendingConfirmation' | 'archived'
 
@@ -149,6 +151,7 @@ function App() {
   const [priorityMap, setPriorityMap] = useState<PriorityMap>({})
   const [draggedKey, setDraggedKey] = useState<string | null>(null)
   const [dragOverKey, setDragOverKey] = useState<string | null>(null)
+  const mainViewRef = useRef<HTMLDivElement>(null)
   const [archivedKeys, setArchivedKeys] = useState<ArchivedKeys>([])
   const [pinnedKeys, setPinnedKeys] = useState<PinnedKeys>([])
   const [deployPendingKeys, setDeployPendingKeys] = useState<DeployPendingKeys>([])
@@ -274,6 +277,24 @@ function App() {
     const nextPriorityMap = { ...priorityMap, [status]: nextOrder }
     setPriorityMap(nextPriorityMap)
     window.api.savePriorityOrder(nextPriorityMap)
+  }
+
+  function handleDragAutoScroll(e: React.DragEvent<HTMLDivElement>): void {
+    if (!draggedKey) return
+    const container = mainViewRef.current
+    if (!container) return
+
+    const rect = container.getBoundingClientRect()
+    const distanceFromTop = e.clientY - rect.top
+    const distanceFromBottom = rect.bottom - e.clientY
+
+    if (distanceFromTop < DRAG_AUTOSCROLL_EDGE_PX) {
+      const intensity = (DRAG_AUTOSCROLL_EDGE_PX - distanceFromTop) / DRAG_AUTOSCROLL_EDGE_PX
+      container.scrollTop -= DRAG_AUTOSCROLL_MAX_SPEED_PX * Math.min(1, Math.max(0, intensity))
+    } else if (distanceFromBottom < DRAG_AUTOSCROLL_EDGE_PX) {
+      const intensity = (DRAG_AUTOSCROLL_EDGE_PX - distanceFromBottom) / DRAG_AUTOSCROLL_EDGE_PX
+      container.scrollTop += DRAG_AUTOSCROLL_MAX_SPEED_PX * Math.min(1, Math.max(0, intensity))
+    }
   }
 
   const notifyNewComments = useCallback((commentResult: RecentComment[]) => {
@@ -868,8 +889,10 @@ function App() {
           </div>
 
           <div
+            ref={mainViewRef}
             className="main-view"
             style={{ display: activeTabId === TICKETS_TAB ? 'block' : 'none' }}
+            onDragOver={handleDragAutoScroll}
           >
             {showSettings && (
               <section className="card">
